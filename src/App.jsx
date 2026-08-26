@@ -20,6 +20,7 @@ export default function App() {
   const [error, setError] = useState(null);
   const [speed, setSpeed] = useState(500);
   const [activePanel, setActivePanel] = useState('variables');
+  const [theme, setTheme] = useState('light');
   const playRef = useRef(null);
 
   const currentState =
@@ -135,8 +136,8 @@ export default function App() {
   );
 
   return (
-    <div className="h-full flex flex-col" style={{ background: 'var(--color-bg-primary)' }}>
-      <Header onRun={handleRun} />
+    <div className="h-full flex flex-col" style={{ background: 'var(--color-bg-primary)' }} data-theme={theme}>
+      <Header onRun={handleRun} theme={theme} onThemeChange={setTheme} />
 
       <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
         {/* Left: Code Editor */}
@@ -158,6 +159,7 @@ export default function App() {
               code={code}
               onChange={setCode}
               activeLine={currentState?.line}
+              theme={theme}
             />
           </div>
         </div>
