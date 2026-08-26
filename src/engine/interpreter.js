@@ -13,6 +13,8 @@ class ExecutionError extends Error {
   }
 }
 
+const DOM_GLOBALS = new Set(['document', 'window', 'navigator', 'location', 'history', 'screen', 'localStorage', 'sessionStorage', 'fetch', 'XMLHttpRequest', 'FormData', 'Headers', 'Request', 'Response', 'URL', 'URLSearchParams', 'Blob', 'File', 'FileReader', 'ImageData', 'CanvasRenderingContext2D', 'HTMLCanvasElement', 'Event', 'CustomEvent', 'addEventListener', 'removeEventListener', 'dispatchEvent', 'querySelector', 'querySelectorAll', 'getElementById', 'getElementsByClassName', 'getElementsByTagName', 'createElement', 'createTextNode', 'createDocumentFragment']);
+
 export function parseCode(source) {
   try {
     const ast = acorn.parse(source, {
@@ -67,6 +69,7 @@ export function generateTrace(source) {
   // Browser-only globals (safe fallbacks for Node.js testing)
   if (typeof window !== 'undefined') {
     env._vars['window'] = window;
+    env._vars['document'] = document;
     env._vars['alert'] = window.alert;
     env._vars['prompt'] = window.prompt;
     env._vars['confirm'] = window.confirm;
@@ -74,6 +77,8 @@ export function generateTrace(source) {
     env._vars['setInterval'] = window.setInterval;
     env._vars['clearTimeout'] = window.clearTimeout;
     env._vars['clearInterval'] = window.clearInterval;
+    env._vars['requestAnimationFrame'] = window.requestAnimationFrame;
+    env._vars['cancelAnimationFrame'] = window.cancelAnimationFrame;
   } else {
     env._vars['setTimeout'] = (fn, ms) => 0;
     env._vars['setInterval'] = (fn, ms) => 0;
@@ -177,16 +182,30 @@ export function generateTrace(source) {
         return execIf(node, scope);
       case 'ForStatement':
         return execFor(node, scope);
+      case 'ForInStatement':
+        return execForIn(node, scope);
+      case 'ForOfStatement':
+        return execForOf(node, scope);
       case 'WhileStatement':
         return execWhile(node, scope);
       case 'FunctionDeclaration':
         return execFuncDecl(node, scope);
+      case 'ClassDeclaration':
+        return execClassDecl(node, scope);
       case 'ReturnStatement':
         return execReturn(node, scope);
       case 'BreakStatement':
         return '__break__';
       case 'ContinueStatement':
         return '__continue__';
+      case 'TryStatement':
+        return execTry(node, scope);
+      case 'ThrowStatement': {
+        const thrownVal = evalExpr(node.argument, scope);
+        throw thrownVal instanceof Error ? thrownVal : new Error(String(thrownVal));
+      }
+      case 'SwitchStatement':
+        return execSwitch(node, scope);
       case 'EmptyStatement':
         return true;
       default:
@@ -196,12 +215,75 @@ export function generateTrace(source) {
 
   function execVarDecl(node, scope) {
     for (const decl of node.declarations) {
-      const name = decl.id.name;
-      defineVar(name, undefined, scope);
       const value = decl.init ? evalExpr(decl.init, scope) : undefined;
-      setVar(name, value, scope);
+      if (decl.id.type === 'Identifier') {
+        defineVar(decl.id.name, value, scope);
+      } else if (decl.id.type === 'ArrayPattern') {
+        execArrayPattern(decl.id.elements, value, scope);
+      } else if (decl.id.type === 'ObjectPattern') {
+        execObjectPattern(decl.id.properties, value, scope);
+      }
     }
     return record(node.loc?.start.line || 0, {}, scope);
+  }
+
+  function execArrayPattern(elements, value, scope) {
+    if (!Array.isArray(value)) value = [];
+    for (let i = 0; i < elements.length; i++) {
+      const el = elements[i];
+      if (!el) continue;
+      const itemValue = i < value.length ? value[i] : undefined;
+      if (el.type === 'Identifier') {
+        defineVar(el.name, itemValue, scope);
+      } else if (el.type === 'ArrayPattern') {
+        execArrayPattern(el.elements, itemValue, scope);
+      } else if (el.type === 'ObjectPattern') {
+        execObjectPattern(el.properties, itemValue, scope);
+      } else if (el.type === 'AssignmentPattern') {
+        const resolved = itemValue !== undefined ? itemValue : evalExpr(el.right, scope);
+        if (el.left.type === 'Identifier') {
+          defineVar(el.left.name, resolved, scope);
+        }
+      } else if (el.type === 'RestElement') {
+        const restValue = value.slice(i);
+        if (el.argument.type === 'Identifier') {
+          defineVar(el.argument.name, restValue, scope);
+        }
+      }
+    }
+  }
+
+  function execObjectPattern(properties, value, scope) {
+    if (value === null || value === undefined) value = {};
+    for (const prop of properties) {
+      if (prop.type === 'RestElement') {
+        const remaining = { ...value };
+        for (const p of properties) {
+          if (p.type === 'Property') {
+            const key = p.key.type === 'Identifier' ? p.key.name : p.key.value;
+            delete remaining[key];
+          }
+        }
+        if (prop.argument.type === 'Identifier') {
+          defineVar(prop.argument.name, remaining, scope);
+        }
+        continue;
+      }
+      const key = prop.key.type === 'Identifier' ? prop.key.name : prop.key.value;
+      const itemValue = value[key];
+      if (prop.value.type === 'Identifier') {
+        defineVar(prop.value.name, itemValue, scope);
+      } else if (prop.value.type === 'AssignmentPattern') {
+        const resolved = itemValue !== undefined ? itemValue : evalExpr(prop.value.right, scope);
+        if (prop.value.left.type === 'Identifier') {
+          defineVar(prop.value.left.name, resolved, scope);
+        }
+      } else if (prop.value.type === 'ArrayPattern') {
+        execArrayPattern(prop.value.elements, itemValue, scope);
+      } else if (prop.value.type === 'ObjectPattern') {
+        execObjectPattern(prop.value.properties, itemValue, scope);
+      }
+    }
   }
 
   function execExprStmt(node, scope) {
@@ -286,6 +368,144 @@ export function generateTrace(source) {
     return true;
   }
 
+  function execForIn(node, scope) {
+    const line = node.loc?.start.line || 0;
+    const obj = evalExpr(node.right, scope);
+    if (obj === null || obj === undefined) return true;
+    const keys = Object.keys(obj);
+    let iteration = 0;
+
+    for (const key of keys) {
+      iteration++;
+      if (iteration > MAX_LOOP_ITERATIONS) {
+        error = { message: `Loop exceeded ${MAX_LOOP_ITERATIONS} iterations.`, line };
+        return false;
+      }
+
+      const loopScope = createScope(scope, 'for-in-loop');
+      if (node.left.type === 'VariableDeclaration') {
+        const decl = node.left.declarations[0];
+        if (decl.id.type === 'Identifier') {
+          defineVar(decl.id.name, key, loopScope);
+        }
+      } else if (node.left.type === 'Identifier') {
+        setVar(node.left.name, key, scope);
+      }
+
+      record(line, { loopInfo: { iteration, condition: key } }, loopScope);
+      const result = execNode(node.body, loopScope);
+      if (result === '__return__' || result === '__break__' || result === false) {
+        if (result === '__break__') break;
+        return result;
+      }
+    }
+    return true;
+  }
+
+  function execForOf(node, scope) {
+    const line = node.loc?.start.line || 0;
+    const iterable = evalExpr(node.right, scope);
+    if (iterable === null || iterable === undefined) return true;
+    let iteration = 0;
+
+    if (typeof iterable[Symbol.iterator] !== 'function') {
+      throw new ExecutionError(`${typeof iterable} is not iterable`, line);
+    }
+
+    for (const item of iterable) {
+      iteration++;
+      if (iteration > MAX_LOOP_ITERATIONS) {
+        error = { message: `Loop exceeded ${MAX_LOOP_ITERATIONS} iterations.`, line };
+        return false;
+      }
+
+      const loopScope = createScope(scope, 'for-of-loop');
+      if (node.left.type === 'VariableDeclaration') {
+        const decl = node.left.declarations[0];
+        if (decl.id.type === 'Identifier') {
+          defineVar(decl.id.name, item, loopScope);
+        } else if (decl.id.type === 'ArrayPattern') {
+          execArrayPattern(decl.id.elements, item, loopScope);
+        } else if (decl.id.type === 'ObjectPattern') {
+          execObjectPattern(decl.id.properties, item, loopScope);
+        }
+      } else if (node.left.type === 'Identifier') {
+        setVar(node.left.name, item, scope);
+      }
+
+      record(line, { loopInfo: { iteration, condition: item } }, loopScope);
+      const result = execNode(node.body, loopScope);
+      if (result === '__return__' || result === '__break__' || result === false) {
+        if (result === '__break__') break;
+        return result;
+      }
+    }
+    return true;
+  }
+
+  function execTry(node, scope) {
+    const line = node.loc?.start.line || 0;
+    const tryScope = createScope(scope, 'try');
+    let thrownError = undefined;
+
+    try {
+      const result = execNode(node.block, tryScope);
+      if (result === '__return__' || result === '__break__' || result === '__continue__') {
+        return result;
+      }
+    } catch (e) {
+      thrownError = e;
+    }
+
+    if (thrownError && node.handler) {
+      const catchScope = createScope(scope, 'catch');
+      if (node.handler.param && node.handler.param.type === 'Identifier') {
+        defineVar(node.handler.param.name, thrownError, catchScope);
+      }
+      const result = execNode(node.handler.body, catchScope);
+      if (result === '__return__' || result === '__break__' || result === '__continue__') {
+        return result;
+      }
+    } else if (thrownError && !node.handler) {
+      throw thrownError;
+    }
+
+    if (node.finalizer) {
+      const result = execNode(node.finalizer, scope);
+      if (result === '__return__' || result === '__break__' || result === '__continue__') {
+        return result;
+      }
+    }
+
+    return true;
+  }
+
+  function execSwitch(node, scope) {
+    const line = node.loc?.start.line || 0;
+    const discriminant = evalExpr(node.discriminant, scope);
+    let matched = false;
+    let result = true;
+
+    for (const switchCase of node.cases) {
+      if (!matched && switchCase.test) {
+        const testVal = evalExpr(switchCase.test, scope);
+        if (testVal === discriminant) {
+          matched = true;
+        }
+      }
+
+      if (matched) {
+        for (const stmt of switchCase.consequent) {
+          result = execNode(stmt, scope);
+          if (result === '__break__') return true;
+          if (result === '__return__' || result === false) return result;
+        }
+      }
+    }
+
+    return true;
+  }
+
   function execWhile(node, scope) {
     const line = node.loc?.start.line || 0;
     let iteration = 0;
@@ -320,6 +540,107 @@ export function generateTrace(source) {
       scope,
     };
     defineVar(node.id.name, funcObj, scope);
+    return record(node.loc?.start.line || 0, {}, scope);
+  }
+
+  function execClassDecl(node, scope) {
+    const className = node.id.name;
+    const superClass = node.superClass ? evalExpr(node.superClass, scope) : null;
+
+    const classObj = {
+      type: 'class',
+      name: className,
+      superClass,
+      methods: {},
+      staticMethods: {},
+      constructor: null,
+    };
+
+    for (const method of node.body.body) {
+      if (method.kind === 'constructor') {
+        classObj.constructor = {
+          type: 'function',
+          name: className,
+          node: { params: method.value.params, body: method.value.body },
+          scope,
+        };
+      } else if (method.static) {
+        classObj.staticMethods[method.key.name] = {
+          type: 'function',
+          name: method.key.name,
+          node: method.value,
+          scope,
+        };
+      } else {
+        classObj.methods[method.key.name] = {
+          type: 'function',
+          name: method.key.name,
+          node: method.value,
+          scope,
+        };
+      }
+    }
+
+    // Create a constructor function that builds instances
+    const constructorFn = function (...args) {
+      const instance = { _class: className };
+      const proto = {};
+
+      for (const [name, method] of Object.entries(classObj.methods)) {
+        proto[name] = function (...mArgs) {
+          const methodScope = createScope(method.scope, name);
+          defineVar('this', instance, methodScope);
+          for (let i = 0; i < method.node.params.length; i++) {
+            defineVar(method.node.params[i].name, mArgs[i], methodScope);
+          }
+          methodScope._isFuncScope = true;
+          callStack.push({ name, scope: methodScope });
+          const prevLen = callStack.length;
+          execNode(method.node.body, methodScope, true);
+          if (callStack.length >= prevLen) callStack.pop();
+          return methodScope._returnValue;
+        };
+      }
+
+      Object.setPrototypeOf(instance, proto);
+
+      if (classObj.constructor) {
+        const consScope = createScope(classObj.constructor.scope, className);
+        defineVar('this', instance, consScope);
+        for (let i = 0; i < classObj.constructor.node.params.length; i++) {
+          defineVar(classObj.constructor.node.params[i].name, args[i], consScope);
+        }
+        consScope._isFuncScope = true;
+        callStack.push({ name: className, scope: consScope });
+        const prevLen = callStack.length;
+        execNode(classObj.constructor.node.body, consScope, true);
+        if (callStack.length >= prevLen) callStack.pop();
+      }
+
+      return instance;
+    };
+
+    // Set up static methods
+    for (const [name, method] of Object.entries(classObj.staticMethods)) {
+      constructorFn[name] = function (...mArgs) {
+        const methodScope = createScope(method.scope, name);
+        for (let i = 0; i < method.node.params.length; i++) {
+          defineVar(method.node.params[i].name, mArgs[i], methodScope);
+        }
+        methodScope._isFuncScope = true;
+        callStack.push({ name, scope: methodScope });
+        const prevLen = callStack.length;
+        execNode(method.node.body, methodScope, true);
+        if (callStack.length >= prevLen) callStack.pop();
+        return methodScope._returnValue;
+      };
+    }
+
+    // Set up prototype for instanceof checks
+    constructorFn.prototype = Object.create(superClass ? superClass.prototype : Object.prototype);
+    constructorFn.prototype.constructor = constructorFn;
+
+    defineVar(className, constructorFn, scope);
     return record(node.loc?.start.line || 0, {}, scope);
   }
 
@@ -359,13 +680,29 @@ export function generateTrace(source) {
         if (node.name === 'undefined') return undefined;
         const val = getVar(node.name, scope);
         if (val === undefined) {
+          let hint = '';
+          if (DOM_GLOBALS.has(node.name)) {
+            hint = `\nRuntime: Non-DOM JavaScript environment.\nExplanation: '${node.name}' is a Browser DOM API and is unavailable in this execution environment.`;
+          }
           throw new ExecutionError(
-            `'${node.name}' is not defined`,
+            `'${node.name}' is not defined${hint}`,
             node.loc?.start.line,
             node.loc?.start.column
           );
         }
         return val;
+      }
+
+      case 'ThisExpression': {
+        const thisVal = getVar('this', scope);
+        if (thisVal === undefined) {
+          throw new ExecutionError(
+            "TypeError: 'this' is not defined in this context",
+            node.loc?.start.line,
+            node.loc?.start.column
+          );
+        }
+        return thisVal;
       }
 
       case 'AssignmentExpression': {
@@ -386,6 +723,24 @@ export function generateTrace(source) {
               default: newVal = val;
             }
             setVar(left.name, newVal, scope);
+          }
+        } else if (left.type === 'MemberExpression') {
+          const obj = evalExpr(left.object, scope);
+          const prop = left.computed ? evalExpr(left.property, scope) : left.property.name;
+          if (node.operator === '=') {
+            obj[prop] = val;
+          } else {
+            const cur = obj[prop];
+            let newVal;
+            switch (node.operator) {
+              case '+=': newVal = cur + val; break;
+              case '-=': newVal = cur - val; break;
+              case '*=': newVal = cur * val; break;
+              case '/=': newVal = cur / val; break;
+              case '%=': newVal = cur % val; break;
+              default: newVal = val;
+            }
+            obj[prop] = newVal;
           }
         }
         return val;
@@ -444,6 +799,7 @@ export function generateTrace(source) {
         const callee = node.callee;
         let funcName = '';
         let funcObj = null;
+        let memberObj = undefined;
 
         // Check for built-in objects (console, Math, etc.) before evaluating
         if (callee.type === 'MemberExpression') {
@@ -473,12 +829,12 @@ export function generateTrace(source) {
           }
 
           // Fall through to general MemberExpression evaluation
-          const obj = evalExpr(callee.object, scope);
+          memberObj = evalExpr(callee.object, scope);
           const prop = callee.computed
             ? evalExpr(callee.property, scope)
             : callee.property.name;
-          funcName = `${objName || obj}.${prop}`;
-          funcObj = obj?.[prop];
+          funcName = `${objName || memberObj}.${prop}`;
+          funcObj = memberObj?.[prop];
         } else if (callee.type === 'Identifier') {
           funcName = callee.name;
           funcObj = getVar(funcName, scope);
@@ -524,26 +880,79 @@ export function generateTrace(source) {
           return funcScope._returnValue;
         }
 
-        // Handle built-in functions stored as native
+        // Handle built-in/native functions — preserve `this` for prototype methods
         if (typeof funcObj === 'function') {
           const args = node.arguments.map((a) => evalExpr(a, scope));
-          return funcObj(...args);
+          // Convert interpreter function objects to real JS functions for native callbacks
+          const nativeArgs = args.map((arg) => {
+            if (arg && typeof arg === 'object' && arg.type === 'function') {
+              const funcObjInner = arg;
+              return (...cbArgs) => {
+                const cbScope = createScope(funcObjInner.scope, funcObjInner.name || 'callback');
+                for (let i = 0; i < funcObjInner.node.params.length; i++) {
+                  defineVar(funcObjInner.node.params[i].name, cbArgs[i], cbScope);
+                }
+                cbScope._isFuncScope = true;
+                callStack.push({ name: funcObjInner.name || 'callback', scope: cbScope });
+                const prevLen = callStack.length;
+                // Handle expression bodies (e.g., n => n * 2) vs block bodies
+                if (funcObjInner.node.body.type === 'BlockStatement') {
+                  execNode(funcObjInner.node.body, cbScope, true);
+                } else {
+                  cbScope._returnValue = evalExpr(funcObjInner.node.body, cbScope);
+                }
+                if (callStack.length >= prevLen) callStack.pop();
+                return cbScope._returnValue;
+              };
+            }
+            return arg;
+          });
+          if (callee.type === 'MemberExpression' && memberObj !== undefined && memberObj !== null) {
+            return funcObj.call(memberObj, ...nativeArgs);
+          }
+          return funcObj(...nativeArgs);
+        }
+
+        if (funcObj !== undefined && funcObj !== null && typeof funcObj !== 'function') {
+          throw new ExecutionError(
+            `TypeError: '${funcName}' is not a function (typeof: ${typeof funcObj})`,
+            node.loc?.start.line
+          );
         }
 
         throw new ExecutionError(
-          `'${funcName}' is not a function`,
+          `ReferenceError: '${funcName}' is not a function`,
           node.loc?.start.line
         );
       }
 
-      case 'ArrayExpression':
-        return node.elements.map((e) => (e ? evalExpr(e, scope) : null));
+      case 'ArrayExpression': {
+        const result = [];
+        for (const el of node.elements) {
+          if (!el) {
+            result.push(null);
+          } else if (el.type === 'SpreadElement') {
+            const spreadVal = evalExpr(el.argument, scope);
+            if (Array.isArray(spreadVal)) {
+              result.push(...spreadVal);
+            } else if (spreadVal && typeof spreadVal[Symbol.iterator] === 'function') {
+              result.push(...spreadVal);
+            } else {
+              result.push(spreadVal);
+            }
+          } else {
+            result.push(evalExpr(el, scope));
+          }
+        }
+        return result;
+      }
 
       case 'MemberExpression': {
         const obj = evalExpr(node.object, scope);
         if (obj === undefined || obj === null) {
+          const objName = node.object.type === 'Identifier' ? node.object.name : 'value';
           throw new ExecutionError(
-            `Cannot read properties of ${obj}`,
+            `TypeError: Cannot read properties of ${obj === null ? 'null' : 'undefined'} (reading '${node.computed ? evalExpr(node.property, scope) : node.property.name}'), object: ${objName}`,
             node.loc?.start.line
           );
         }
@@ -608,11 +1017,79 @@ export function generateTrace(source) {
         return val;
       }
 
+      case 'AwaitExpression': {
+        const innerVal = evalExpr(node.argument, scope);
+        if (innerVal && typeof innerVal === 'object' && typeof innerVal.then === 'function') {
+          let resolved = undefined;
+          innerVal.then((v) => { resolved = v; }, () => {});
+          return resolved;
+        }
+        return innerVal;
+      }
+
       case 'NewExpression': {
-        throw new ExecutionError(
-          `'new' is not supported in this interpreter`,
-          node.loc?.start.line
-        );
+        let constructorFunc = null;
+        let constructorName = '';
+        if (node.callee.type === 'Identifier') {
+          constructorName = node.callee.name;
+          constructorFunc = getVar(constructorName, scope);
+        } else if (node.callee.type === 'MemberExpression') {
+          const obj = evalExpr(node.callee.object, scope);
+          const prop = node.callee.computed
+            ? evalExpr(node.callee.property, scope)
+            : node.callee.property.name;
+          constructorName = `${constructorName || obj}.${prop}`;
+          constructorFunc = obj?.[prop];
+        } else {
+          constructorFunc = evalExpr(node.callee, scope);
+        }
+
+        if (typeof constructorFunc !== 'function') {
+          throw new ExecutionError(
+            `'${constructorName}' is not a constructor`,
+            node.loc?.start.line
+          );
+        }
+
+        const args = node.arguments.map((a) => evalExpr(a, scope));
+
+        // Convert interpreter function objects to real JS functions for native constructors
+        const nativeArgs = args.map((arg) => {
+          if (arg && typeof arg === 'object' && arg.type === 'function') {
+            const funcObjInner = arg;
+            return (...cbArgs) => {
+              const cbScope = createScope(funcObjInner.scope, funcObjInner.name || 'callback');
+              for (let i = 0; i < funcObjInner.node.params.length; i++) {
+            defineVar(funcObjInner.node.params[i].name, cbArgs[i], cbScope);
+              }
+              cbScope._isFuncScope = true;
+              callStack.push({ name: funcObjInner.name || 'callback', scope: cbScope });
+              const prevLen = callStack.length;
+              execNode(funcObjInner.node.body, cbScope, true);
+              if (callStack.length >= prevLen) callStack.pop();
+              return cbScope._returnValue;
+            };
+          }
+          return arg;
+        });
+
+        // For user-defined class constructors, create a plain object and run the constructor
+        if (constructorFunc.type === 'function') {
+          const instance = {};
+          const funcScope = createScope(constructorFunc.scope, constructorName);
+          defineVar('this', instance, funcScope);
+          for (let i = 0; i < constructorFunc.node.params.length; i++) {
+            defineVar(constructorFunc.node.params[i].name, nativeArgs[i], funcScope);
+          }
+          funcScope._isFuncScope = true;
+          callStack.push({ name: constructorName, scope: funcScope });
+          execNode(constructorFunc.node.body, funcScope, true);
+          if (callStack.length > 1) callStack.pop();
+          return instance;
+        }
+
+        // For native constructors (Date, Map, Set, Promise, RegExp, Error, etc.)
+        return new constructorFunc(...nativeArgs);
       }
 
       default:
