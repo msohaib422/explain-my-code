@@ -1051,7 +1051,7 @@ export function generateTrace(source) {
 
           record(node.loc?.start.line || 0, {
             functionCall: { name: funcName, params: paramValues, args },
-          }, scope);
+          }, funcScope);
 
           const prevLen = callStack.length;
           const result = execNode(funcObj.node.body, funcScope, true);
