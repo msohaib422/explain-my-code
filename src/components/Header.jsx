@@ -1,6 +1,7 @@
 import ThemeToggle from './ThemeToggle';
+import SaveCodeButton from './SaveCodeButton';
 
-export default function Header({ onRun, theme, onThemeChange }) {
+export default function Header({ onRun, theme, onThemeChange, code }) {
   return (
     <header
       className="flex items-center justify-between px-4 py-2 shrink-0"
@@ -26,6 +27,7 @@ export default function Header({ onRun, theme, onThemeChange }) {
       </div>
       <div className="flex items-center gap-2">
         <ThemeToggle theme={theme} onToggle={() => onThemeChange(theme === 'dark' ? 'light' : 'dark')} />
+        <SaveCodeButton code={code} />
         <button
           onClick={onRun}
           className="flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-all hover:brightness-110 active:scale-95"

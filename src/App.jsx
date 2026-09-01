@@ -144,7 +144,7 @@ export default function App() {
 
   return (
     <div className="h-full flex flex-col" style={{ background: 'var(--color-bg-primary)' }} data-theme={theme}>
-      <Header onRun={handleRun} theme={theme} onThemeChange={setTheme} />
+      <Header onRun={handleRun} theme={theme} onThemeChange={setTheme} code={code} />
 
       <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
         {/* Left: Code Editor */}
