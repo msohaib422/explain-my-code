@@ -1,11 +1,13 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { examples } from './examples';
 import { generateTrace } from './engine/interpreter';
+import { generateAllExplanations } from './engine/explainer';
 import CodeEditor from './components/CodeEditor';
 import ExecutionControls from './components/ExecutionControls';
 import VariablesPanel from './components/VariablesPanel';
 import CallStackPanel from './components/CallStackPanel';
 import ConsolePanel from './components/ConsolePanel';
+import ExplanationPanel from './components/ExplanationPanel';
 import ErrorPanel from './components/ErrorPanel';
 import ExampleSelector from './components/ExampleSelector';
 import Header from './components/Header';
@@ -26,6 +28,11 @@ export default function App() {
   const currentState =
     trace && trace.steps[currentStep] ? trace.steps[currentStep] : null;
   const totalSteps = trace ? trace.steps.length : 0;
+
+  const explanations = useMemo(() => {
+    if (!trace || !trace.steps || trace.steps.length === 0) return [];
+    return generateAllExplanations(code, trace);
+  }, [trace, code]);
 
   const handleRun = useCallback(() => {
     setIsPlaying(false);
@@ -181,7 +188,7 @@ export default function App() {
               background: 'var(--color-bg-secondary)',
             }}
           >
-            {['variables', 'callstack', 'console'].map((panel) => (
+            {['variables', 'callstack', 'console', 'explanation'].map((panel) => (
               <button
                 key={panel}
                 onClick={() => setActivePanel(panel)}
@@ -199,7 +206,9 @@ export default function App() {
                   ? 'Variables'
                   : panel === 'callstack'
                     ? 'Call Stack'
-                    : 'Console'}
+                    : panel === 'console'
+                      ? 'Console'
+                      : 'Explain'}
                 {panel === 'console' && trace && trace.steps.length > 0 && trace.steps[trace.steps.length - 1].output.length > 0 && (
                   <span
                     className="ml-1 px-1 text-[10px] rounded"
@@ -265,6 +274,12 @@ export default function App() {
                     ? trace.steps[trace.steps.length - 1].output
                     : currentState.output
                 }
+              />
+            )}
+            {activePanel === 'explanation' && currentState && (
+              <ExplanationPanel
+                explanations={explanations}
+                currentStep={currentStep}
               />
             )}
             {!currentState && !error && (

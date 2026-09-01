@@ -52,7 +52,6 @@ export function generateTrace(source) {
   const env = createScope(null, 'global');
   callStack.push({ name: 'global', scope: env });
 
-  // Register known browser/JS globals so Identifier lookup finds them
   const knownGlobals = {
     JSON, Math, console, Array, Object, String, Number, Boolean,
     Date, RegExp, Error, RangeError, TypeError, SyntaxError,
@@ -67,29 +66,26 @@ export function generateTrace(source) {
     }
   }
 
-  // Browser-only globals (safe fallbacks for Node.js testing)
   if (typeof window !== 'undefined') {
     env._vars['window'] = window;
     env._vars['document'] = document;
     env._vars['alert'] = window.alert;
     env._vars['prompt'] = window.prompt;
     env._vars['confirm'] = window.confirm;
-    env._vars['setTimeout'] = window.setTimeout;
-    env._vars['setInterval'] = window.setInterval;
-    env._vars['clearTimeout'] = window.clearTimeout;
-    env._vars['clearInterval'] = window.clearInterval;
-    env._vars['requestAnimationFrame'] = window.requestAnimationFrame;
-    env._vars['cancelAnimationFrame'] = window.cancelAnimationFrame;
-  } else {
-    env._vars['setTimeout'] = (fn, ms) => 0;
-    env._vars['setInterval'] = (fn, ms) => 0;
-    env._vars['clearTimeout'] = () => {};
-    env._vars['clearInterval'] = () => {};
-    env._vars['alert'] = (msg) => {};
-    env._vars['prompt'] = (msg, def) => def || '';
-    env._vars['confirm'] = (msg) => true;
   }
-  // Primitives and special values
+
+  // Controlled setTimeout / clearTimeout — execute synchronously for educational interpreter
+  env._vars['setTimeout'] = (fn, ms) => {
+    if (typeof fn === 'function') fn();
+    return 0;
+  };
+  env._vars['setInterval'] = (fn, ms) => {
+    if (typeof fn === 'function') fn();
+    return 0;
+  };
+  env._vars['clearTimeout'] = () => {};
+  env._vars['clearInterval'] = () => {};
+
   env._vars['undefined'] = undefined;
   env._vars['NaN'] = NaN;
   env._vars['Infinity'] = Infinity;
@@ -179,7 +175,6 @@ export function generateTrace(source) {
     }
 
     const vars = {};
-    // Collect from the current execution scope (function scope, not global)
     const scopeToRecord = recordScope || env;
     collectVisibleVars(scopeToRecord, vars);
 
@@ -358,7 +353,6 @@ export function generateTrace(source) {
   }
 
   function execBlock(node, scope, useExistingScope = false) {
-    // Function bodies reuse the function scope; other blocks get a child scope
     const blockScope = useExistingScope ? scope : createScope(scope, scope._name || 'block');
     for (const stmt of node.body) {
       const result = execNode(stmt, blockScope);
@@ -615,6 +609,8 @@ export function generateTrace(source) {
       name: node.id.name,
       node,
       scope,
+      isGenerator: node.generator || false,
+      isAsync: node.async || false,
     };
     defineVar(node.id.name, funcObj, scope);
     return record(node.loc?.start.line || 0, {}, scope);
@@ -661,32 +657,19 @@ export function generateTrace(source) {
     // Create a constructor function that builds instances
     const constructorFn = function (...args) {
       const instance = { _class: className };
-      const proto = {};
 
-      for (const [name, method] of Object.entries(classObj.methods)) {
-        proto[name] = function (...mArgs) {
-          const methodScope = createScope(method.scope, name);
-          defineVar('this', instance, methodScope);
-          for (let i = 0; i < method.node.params.length; i++) {
-            defineVar(method.node.params[i].name, mArgs[i], methodScope);
-          }
-          methodScope._isFuncScope = true;
-          callStack.push({ name, scope: methodScope });
-          const prevLen = callStack.length;
-          execNode(method.node.body, methodScope, true);
-          if (callStack.length >= prevLen) callStack.pop();
-          return methodScope._returnValue;
-        };
-      }
-
-      Object.setPrototypeOf(instance, proto);
+      // Use the prototype which has methods already set up (on the prototype chain)
+      Object.setPrototypeOf(instance, constructorFn.prototype);
 
       if (classObj.constructor) {
         const consScope = createScope(classObj.constructor.scope, className);
         defineVar('this', instance, consScope);
-        if (classObj.superClass) {
-          defineVar('__super__', { parentConstructor: classObj.superClass }, consScope);
+
+        // Provide super() for the constructor
+        if (superClass) {
+          defineVar('super', { parentConstructor: superClass }, consScope);
         }
+
         for (let i = 0; i < classObj.constructor.node.params.length; i++) {
           convertParam(classObj.constructor.node.params[i], args[i], consScope);
         }
@@ -716,9 +699,42 @@ export function generateTrace(source) {
       };
     }
 
-    // Set up prototype for instanceof checks
-    constructorFn.prototype = Object.create(superClass ? superClass.prototype : Object.prototype);
+    // Set up prototype with methods on the PROTOTYPE CHAIN (not per-instance)
+    if (superClass) {
+      constructorFn.prototype = Object.create(superClass.prototype);
+    } else {
+      constructorFn.prototype = Object.create(Object.prototype);
+    }
     constructorFn.prototype.constructor = constructorFn;
+
+    // Add methods to the prototype so they're shared across instances
+    for (const [name, method] of Object.entries(classObj.methods)) {
+      constructorFn.prototype[name] = function (...mArgs) {
+        const methodScope = createScope(method.scope, name);
+        defineVar('this', this, methodScope);
+        for (let i = 0; i < method.node.params.length; i++) {
+          defineVar(method.node.params[i].name, mArgs[i], methodScope);
+        }
+        methodScope._isFuncScope = true;
+
+        // If this method calls super.method(), we need the parent method
+        if (superClass && superClass.prototype && typeof superClass.prototype[name] === 'function') {
+          const superObj = {
+            [name]: superClass.prototype[name],
+          };
+          defineVar('super', superObj, methodScope);
+        }
+
+        callStack.push({ name, scope: methodScope });
+        const prevLen = callStack.length;
+        execNode(method.node.body, methodScope, true);
+        if (callStack.length >= prevLen) callStack.pop();
+        return methodScope._returnValue;
+      };
+    }
+
+    // Store class metadata for reference
+    constructorFn.__classObj__ = classObj;
 
     defineVar(className, constructorFn, scope);
     return record(node.loc?.start.line || 0, {}, scope);
@@ -733,9 +749,6 @@ export function generateTrace(source) {
       callStack.pop();
     }
 
-    // Walk up to the function scope and set _returnValue there.
-    // execReturn may be called from a deeply nested block scope (e.g. inside an if),
-    // but CallExpression reads _returnValue from the function scope.
     let s = scope;
     while (s) {
       if (s._isFuncScope) {
@@ -744,9 +757,626 @@ export function generateTrace(source) {
       }
       s = s._parent;
     }
-    // Fallback: set on current scope (shouldn't normally reach here)
     scope._returnValue = value;
     return '__return__';
+  }
+
+  // ---- Generator helpers ----
+  // Converts the generator body into a flat instruction list (like bytecode).
+  // Each .next() call advances through instructions until a yield is hit.
+
+  function createGeneratorObject(funcObj, args, callerScope) {
+    const genScope = createScope(funcObj.scope, funcObj.name || 'generator');
+    for (let i = 0; i < funcObj.node.params.length; i++) {
+      convertParam(funcObj.node.params[i], args[i], genScope);
+    }
+    genScope._isFuncScope = true;
+
+    const bodyStmts = funcObj.node.body.type === 'BlockStatement'
+      ? funcObj.node.body.body
+      : [funcObj.node.body];
+
+    // Flatten the generator body into linear instructions
+    const instructions = [];
+    function emit(stmt) {
+      if (!stmt) return;
+      switch (stmt.type) {
+        case 'VariableDeclaration':
+          instructions.push({ type: 'exec', stmt });
+          break;
+        case 'ExpressionStatement':
+          instructions.push({ type: 'exec', stmt });
+          break;
+        case 'ReturnStatement':
+          instructions.push({ type: 'exec', stmt });
+          break;
+        case 'BreakStatement':
+          instructions.push({ type: 'break' });
+          break;
+        case 'ContinueStatement':
+          instructions.push({ type: 'continue' });
+          break;
+        case 'BlockStatement':
+          for (const inner of stmt.body) emit(inner);
+          break;
+        case 'IfStatement': {
+          instructions.push({ type: 'if-test', test: stmt.test });
+          const jumpIdx = instructions.length;
+          instructions.push({ type: 'placeholder' });
+          emit(stmt.consequent);
+          if (stmt.alternate) {
+            const endJump = instructions.length;
+            instructions.push({ type: 'placeholder' });
+            instructions[jumpIdx] = { type: 'if-false-jump', target: instructions.length };
+            emit(stmt.alternate);
+            instructions[endJump] = { type: 'jump', target: instructions.length };
+          } else {
+            instructions[jumpIdx] = { type: 'if-false-jump', target: instructions.length };
+          }
+          break;
+        }
+        case 'WhileStatement': {
+          const testPos = instructions.length;
+          const falseJumpPos = testPos + 1;
+          instructions.push({ type: 'loop-test', test: stmt.test, line: stmt.loc?.start.line || 0 });
+          instructions.push({ type: 'placeholder' }); // falseJump slot
+          emit(stmt.body);
+          instructions.push({ type: 'jump', target: testPos });
+          instructions[falseJumpPos] = { type: 'if-false-jump', target: instructions.length };
+          break;
+        }
+        case 'ForStatement': {
+          if (stmt.init) {
+            if (stmt.init.type === 'VariableDeclaration') {
+              instructions.push({ type: 'for-init', init: stmt.init });
+            } else {
+              instructions.push({ type: 'for-init-expr', init: stmt.init });
+            }
+          }
+          const testPos = instructions.length;
+          const falseJumpPos = testPos + 1;
+          instructions.push({ type: 'loop-test', test: stmt.test, line: stmt.loc?.start.line || 0 });
+          instructions.push({ type: 'placeholder' });
+          emit(stmt.body);
+          if (stmt.update) {
+            instructions.push({ type: 'for-update', update: stmt.update });
+          }
+          instructions.push({ type: 'jump', target: testPos });
+          instructions[falseJumpPos] = { type: 'if-false-jump', target: instructions.length };
+          break;
+        }
+        case 'ForOfStatement': {
+          instructions.push({ type: 'for-of-init', stmt });
+          const loopStart = instructions.length;
+          instructions.push({ type: 'for-of-next' });
+          const falseJumpPos = instructions.length;
+          instructions.push({ type: 'placeholder' });
+          emit(stmt.body);
+          instructions.push({ type: 'jump', target: loopStart });
+          instructions[falseJumpPos] = { type: 'if-false-jump', target: instructions.length };
+          break;
+        }
+        case 'TryStatement': {
+          instructions.push({ type: 'try', stmt });
+          break;
+        }
+        default:
+          instructions.push({ type: 'exec', stmt });
+          break;
+      }
+    }
+    for (const stmt of bodyStmts) emit(stmt);
+    instructions.push({ type: 'done' });
+
+    let ip = 0;
+    let done = false;
+    let yieldResult = undefined;
+
+    // for-of state
+    let _forOfIter = null;
+    let _forOfScope = null;
+    let _forOfVarName = null;
+
+    const generator = {
+      _type: 'generator',
+      next(val) {
+        if (done) return { value: undefined, done: true };
+        try {
+          yieldResult = undefined;
+          while (ip < instructions.length && !yieldResult) {
+            const instr = instructions[ip];
+            switch (instr.type) {
+              case 'exec': {
+                const stmt = instr.stmt;
+                if (stmt.type === 'VariableDeclaration') {
+                  for (const decl of stmt.declarations) {
+                    const value = decl.init ? evalExpr(decl.init, genScope) : undefined;
+                    if (decl.id.type === 'Identifier') {
+                      defineVar(decl.id.name, value, genScope);
+                    } else if (decl.id.type === 'ArrayPattern') {
+                      execArrayPattern(decl.id.elements, value, genScope);
+                    } else if (decl.id.type === 'ObjectPattern') {
+                      execObjectPattern(decl.id.properties, value, genScope);
+                    }
+                  }
+                  record(stmt.loc?.start.line || 0, {}, genScope);
+                } else if (stmt.type === 'ExpressionStatement') {
+                  const result = evalExpr(stmt.expression, genScope);
+                  if (result && typeof result === 'object' && result.__yield__) {
+                    ip++;
+                    yieldResult = { value: result.__yield__, done: false };
+                    break;
+                  }
+                } else if (stmt.type === 'ReturnStatement') {
+                  const value = stmt.argument ? evalExpr(stmt.argument, genScope) : undefined;
+                  genScope._returnValue = value;
+                  record(stmt.loc?.start.line || 0, { returnValue: value }, genScope);
+                  done = true;
+                  return { value, done: true };
+                } else {
+                  execNode(stmt, genScope);
+                }
+                ip++;
+                break;
+              }
+              case 'loop-test': {
+                const testVal = evalExpr(instr.test, genScope);
+                record(instr.line || 0, { loopInfo: { iteration: 1, condition: testVal } }, genScope);
+                if (!testVal) {
+                  // Jump past the loop body to the if-false-jump
+                  ip = ip + 1; // skip to the if-false-jump instruction
+                } else {
+                  ip = ip + 2; // skip both loop-test and if-false-jump placeholder
+                }
+                break;
+              }
+              case 'if-false-jump': {
+                ip = instr.target;
+                break;
+              }
+              case 'jump': {
+                ip = instr.target;
+                break;
+              }
+              case 'for-init': {
+                const init = instr.init;
+                for (const decl of init.declarations) {
+                  defineVar(decl.id.name, undefined, genScope);
+                  const val = decl.init ? evalExpr(decl.init, genScope) : undefined;
+                  setVar(decl.id.name, val, genScope);
+                }
+                ip++;
+                break;
+              }
+              case 'for-init-expr': {
+                evalExpr(instr.init, genScope);
+                ip++;
+                break;
+              }
+              case 'for-update': {
+                evalExpr(instr.update, genScope);
+                ip++;
+                break;
+              }
+              case 'for-of-init': {
+                const stmt = instr.stmt;
+                const iterable = evalExpr(stmt.right, genScope);
+                _forOfIter = iterable ? iterable[Symbol.iterator]() : null;
+                _forOfVarName = null;
+                if (stmt.left.type === 'VariableDeclaration') {
+                  _forOfVarName = stmt.left.declarations[0].id.name;
+                }
+                ip++;
+                break;
+              }
+              case 'for-of-next': {
+                if (!_forOfIter) {
+                  // Skip to end of for-of
+                  for (let j = ip + 1; j < instructions.length; j++) {
+                    if (instructions[j].type === 'if-false-jump') {
+                      ip = instructions[j].target;
+                      break;
+                    }
+                  }
+                  break;
+                }
+                const next = _forOfIter.next();
+                if (next.done) {
+                  for (let j = ip + 1; j < instructions.length; j++) {
+                    if (instructions[j].type === 'if-false-jump') {
+                      ip = instructions[j].target;
+                      break;
+                    }
+                  }
+                } else {
+                  if (_forOfVarName) {
+                    defineVar(_forOfVarName, next.value, genScope);
+                  }
+                  ip++;
+                }
+                break;
+              }
+              case 'try': {
+                try {
+                  execNode(instr.stmt.block, genScope);
+                } catch (e) {
+                  if (instr.stmt.handler) {
+                    const catchScope = createScope(genScope, 'catch');
+                    if (instr.stmt.handler.param) {
+                      defineVar(instr.stmt.handler.param.name, e, catchScope);
+                    }
+                    execNode(instr.stmt.handler.body, catchScope);
+                  }
+                }
+                if (instr.stmt.finalizer) {
+                  execNode(instr.stmt.finalizer, genScope);
+                }
+                ip++;
+                break;
+              }
+              case 'break': {
+                done = true;
+                return { value: undefined, done: true };
+              }
+              case 'continue': {
+                done = true;
+                return { value: undefined, done: true };
+              }
+              case 'done': {
+                done = true;
+                return { value: undefined, done: true };
+              }
+              default:
+                ip++;
+                break;
+            }
+          }
+          if (yieldResult) return yieldResult;
+          done = true;
+          return { value: undefined, done: true };
+        } catch (e) {
+          done = true;
+          if (e instanceof ExecutionError) {
+            error = { message: e.message, line: e.line || 0 };
+          } else {
+            error = { message: e.message || 'Generator error', line: 0 };
+          }
+          return { value: undefined, done: true };
+        }
+      },
+      return(val) {
+        done = true;
+        return { value: val, done: true };
+      },
+      throw(err) {
+        done = true;
+        throw err;
+      },
+      [Symbol.iterator]() {
+        return this;
+      },
+    };
+
+    return generator;
+  }
+
+  // ---- Promise helpers ----
+
+  function createInterpreterPromise(executorFn) {
+    const promise = {
+      _type: 'promise',
+      _state: 'pending',
+      _value: undefined,
+      _reason: undefined,
+      _thenCallbacks: [],
+      _catchCallbacks: [],
+      _finallyCallbacks: [],
+
+      then(onFulfilled, onRejected) {
+        const child = createInterpreterPromise(() => {});
+        child._parent = this;
+
+        const fulfill = (val) => {
+          try {
+            if (typeof onFulfilled === 'function') {
+              const result = onFulfilled(val);
+              if (result && typeof result === 'object' && result._type === 'promise') {
+                result.then(
+                  (v) => { child._resolve(v); },
+                  (r) => { child._reject(r); }
+                );
+              } else {
+                child._resolve(result);
+              }
+            } else {
+              child._resolve(val);
+            }
+          } catch (e) {
+            child._reject(e);
+          }
+        };
+
+        const reject = (reason) => {
+          try {
+            if (typeof onRejected === 'function') {
+              const result = onRejected(reason);
+              if (result && typeof result === 'object' && result._type === 'promise') {
+                result.then(
+                  (v) => { child._resolve(v); },
+                  (r) => { child._reject(r); }
+                );
+              } else {
+                child._resolve(result);
+              }
+            } else {
+              child._reject(reason);
+            }
+          } catch (e) {
+            child._reject(e);
+          }
+        };
+
+        if (this._state === 'fulfilled') {
+          fulfill(this._value);
+        } else if (this._state === 'rejected') {
+          reject(this._reason);
+        } else {
+          this._thenCallbacks.push({ fulfill, reject });
+        }
+
+        return child;
+      },
+
+      catch(onRejected) {
+        return this.then(undefined, onRejected);
+      },
+
+      finally(onFinally) {
+        return this.then(
+          (val) => {
+            if (typeof onFinally === 'function') onFinally();
+            return val;
+          },
+          (reason) => {
+            if (typeof onFinally === 'function') onFinally();
+            throw reason;
+          }
+        );
+      },
+
+      _resolve(value) {
+        if (this._state !== 'pending') return;
+
+        // Resolve thenables
+        if (value && typeof value === 'object' && typeof value.then === 'function') {
+          try {
+            value.then(
+              (v) => this._resolve(v),
+              (r) => this._reject(r)
+            );
+          } catch (e) {
+            this._reject(e);
+          }
+          return;
+        }
+
+        this._state = 'fulfilled';
+        this._value = value;
+        for (const cb of this._thenCallbacks) {
+          cb.fulfill(value);
+        }
+        this._thenCallbacks = [];
+      },
+
+      _reject(reason) {
+        if (this._state !== 'pending') return;
+        this._state = 'rejected';
+        this._reason = reason;
+        for (const cb of this._thenCallbacks) {
+          cb.reject(reason);
+        }
+        this._thenCallbacks = [];
+      },
+    };
+
+    // Execute the executor
+    try {
+      executorFn(
+        (value) => promise._resolve(value),
+        (reason) => promise._reject(reason)
+      );
+    } catch (e) {
+      promise._reject(e);
+    }
+
+    return promise;
+  }
+
+  function createInterpreterPromiseResolve(value) {
+    if (value && typeof value === 'object' && value._type === 'promise') {
+      return value;
+    }
+    const p = createInterpreterPromise(() => {});
+    p._state = 'fulfilled';
+    p._value = value;
+    return p;
+  }
+
+  function createInterpreterPromiseReject(reason) {
+    const p = createInterpreterPromise(() => {});
+    p._state = 'rejected';
+    p._reason = reason;
+    return p;
+  }
+
+  function createInterpreterPromiseAll(iterable) {
+    return createInterpreterPromise((resolve, reject) => {
+      const values = [];
+      let remaining = 0;
+      let resolved = false;
+
+      const items = Array.isArray(iterable) ? iterable : Array.from(iterable);
+      if (items.length === 0) {
+        resolve([]);
+        return;
+      }
+
+      remaining = items.length;
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item && typeof item === 'object' && item._type === 'promise') {
+          item.then(
+            (val) => {
+              values[i] = val;
+              remaining--;
+              if (remaining === 0 && !resolved) {
+                resolved = true;
+                resolve(values);
+              }
+            },
+            (reason) => {
+              if (!resolved) {
+                resolved = true;
+                reject(reason);
+              }
+            }
+          );
+        } else {
+          values[i] = item;
+          remaining--;
+          if (remaining === 0 && !resolved) {
+            resolved = true;
+            resolve(values);
+          }
+        }
+      }
+    });
+  }
+
+  function createInterpreterPromiseRace(iterable) {
+    return createInterpreterPromise((resolve, reject) => {
+      let settled = false;
+      const items = Array.isArray(iterable) ? iterable : Array.from(iterable);
+      for (const item of items) {
+        if (item && typeof item === 'object' && item._type === 'promise') {
+          item.then(
+            (val) => { if (!settled) { settled = true; resolve(val); } },
+            (reason) => { if (!settled) { settled = true; reject(reason); } }
+          );
+        } else {
+          if (!settled) { settled = true; resolve(item); }
+        }
+      }
+    });
+  }
+
+  function createInterpreterPromiseAny(iterable) {
+    return createInterpreterPromise((resolve, reject) => {
+      let settled = false;
+      const errors = [];
+      let remaining = 0;
+      const items = Array.isArray(iterable) ? iterable : Array.from(iterable);
+      if (items.length === 0) {
+        reject(new AggregateError([], 'All promises were rejected'));
+        return;
+      }
+      remaining = items.length;
+      for (const item of items) {
+        if (item && typeof item === 'object' && item._type === 'promise') {
+          item.then(
+            (val) => { if (!settled) { settled = true; resolve(val); } },
+            (reason) => {
+              errors.push(reason);
+              remaining--;
+              if (remaining === 0 && !settled) {
+                settled = true;
+                reject(new AggregateError(errors, 'All promises were rejected'));
+              }
+            }
+          );
+        } else {
+          if (!settled) { settled = true; resolve(item); }
+        }
+      }
+    });
+  }
+
+  function createInterpreterPromiseAllSettled(iterable) {
+    return createInterpreterPromise((resolve) => {
+      const results = [];
+      let remaining = 0;
+      let resolved = false;
+      const items = Array.isArray(iterable) ? iterable : Array.from(iterable);
+      if (items.length === 0) {
+        resolve([]);
+        return;
+      }
+      remaining = items.length;
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item && typeof item === 'object' && item._type === 'promise') {
+          item.then(
+            (val) => {
+              results[i] = { status: 'fulfilled', value: val };
+              remaining--;
+              if (remaining === 0 && !resolved) {
+                resolved = true;
+                resolve(results);
+              }
+            },
+            (reason) => {
+              results[i] = { status: 'rejected', reason };
+              remaining--;
+              if (remaining === 0 && !resolved) {
+                resolved = true;
+                resolve(results);
+              }
+            }
+          );
+        } else {
+          results[i] = { status: 'fulfilled', value: item };
+          remaining--;
+          if (remaining === 0 && !resolved) {
+            resolved = true;
+            resolve(results);
+          }
+        }
+      }
+    });
+  }
+
+  // ---- Async/Await support ----
+
+  function callInterpreterFunction(funcObj, args, thisVal) {
+    const funcScope = createScope(funcObj.scope, funcObj.name || 'anonymous');
+
+    if (thisVal !== undefined) {
+      defineVar('this', thisVal, funcScope);
+    }
+
+    const params = funcObj.node.params || [];
+    for (let i = 0; i < params.length; i++) {
+      convertParam(params[i], args[i], funcScope);
+    }
+    funcScope._isFuncScope = true;
+    callStack.push({ name: funcObj.name || 'anonymous', scope: funcScope });
+
+    const paramNames = params
+      .filter((p) => p.type === 'Identifier')
+      .map((p) => p.name);
+    const paramValues = {};
+    paramNames.forEach((n, i) => {
+      paramValues[n] = args[i];
+    });
+
+    if (funcObj.node.body.type === 'BlockStatement') {
+      execNode(funcObj.node.body, funcScope, true);
+    } else {
+      funcScope._returnValue = evalExpr(funcObj.node.body, funcScope);
+    }
+
+    if (callStack.length > 0) callStack.pop();
+    return funcScope._returnValue;
   }
 
   function evalExpr(node, scope) {
@@ -918,7 +1548,7 @@ export function generateTrace(source) {
         let thisVal = undefined;
 
         if (callee.type === 'Super') {
-          const superInfo = getVar('__super__', scope);
+          const superInfo = getVar('super', scope);
           if (!superInfo || !superInfo.parentConstructor) {
             throw new ExecutionError(
               "ReferenceError: 'super' is not available in this context",
@@ -928,9 +1558,25 @@ export function generateTrace(source) {
           const args = evalArgs(node.arguments, scope);
           const instance = getVar('this', scope);
           if (instance) {
-            Object.assign(instance, superInfo.parentConstructor(...args));
+            // Call parent constructor and copy properties
+            const parentInstance = callInterpreterFunction(
+              superInfo.parentConstructor.__classObj__?.constructor || (() => {}),
+              args,
+              instance
+            );
+            // Inherit properties from parent constructor
+            if (parentInstance) {
+              for (const key of Object.keys(parentInstance)) {
+                if (key !== '_class' && !(key in instance)) {
+                  instance[key] = parentInstance[key];
+                }
+              }
+            }
           } else {
-            superInfo.parentConstructor(...args);
+            callInterpreterFunction(
+              superInfo.parentConstructor.__classObj__?.constructor || (() => {}),
+              args
+            );
           }
           return undefined;
         }
@@ -941,7 +1587,6 @@ export function generateTrace(source) {
             : callee.property.name;
 
           if (!callee.computed) {
-            // Intercept console methods — accumulate output
             const objName = callee.object.type === 'Identifier' ? callee.object.name : null;
           if (objName === 'console') {
             const args = evalArgs(node.arguments, scope);
@@ -955,24 +1600,35 @@ export function generateTrace(source) {
             }
           }
 
-          // Evaluate object FIRST to capture `this`
-          memberObj = evalExpr(callee.object, scope);
-          thisVal = memberObj;
-
-          if (memberObj === undefined || memberObj === null) {
-            throw new ExecutionError(
-              `TypeError: Cannot read properties of ${memberObj === null ? 'null' : 'undefined'} (reading '${propName}')`,
-              node.loc?.start.line
-            );
+          // Check super.method() pattern
+          if (callee.object.type === 'Identifier' && callee.object.name === 'super') {
+            const superObj = getVar('super', scope);
+            if (superObj && superObj[propName]) {
+              funcObj = superObj[propName];
+              memberObj = getVar('this', scope);
+              thisVal = memberObj;
+              funcName = `super.${propName}`;
+            }
           }
 
-          funcName = `${callee.object.type === 'Identifier' ? callee.object.name : '??'}.${propName}`;
-          funcObj = memberObj?.[propName];
+          if (!funcObj) {
+            memberObj = evalExpr(callee.object, scope);
+            thisVal = memberObj;
+
+            if (memberObj === undefined || memberObj === null) {
+              throw new ExecutionError(
+                `TypeError: Cannot read properties of ${memberObj === null ? 'null' : 'undefined'} (reading '${propName}')`,
+                node.loc?.start.line
+              );
+            }
+
+            funcName = `${callee.object.type === 'Identifier' ? callee.object.name : '??'}.${propName}`;
+            funcObj = memberObj?.[propName];
+          }
         } else if (callee.type === 'Identifier') {
           funcName = callee.name;
           funcObj = getVar(funcName, scope);
         } else if (callee.type === 'CallExpression') {
-          // IIFE: (function(){})() or (()=>{})()
           funcObj = evalExpr(callee, scope);
           funcName = '(IIFE)';
         } else {
@@ -980,7 +1636,7 @@ export function generateTrace(source) {
           funcName = '(expression)';
         }
 
-        // --- Built-in type method interception ---
+        // Built-in type method interception
         if (callee.type === 'MemberExpression' && memberObj !== undefined && memberObj !== null) {
           const propName = callee.computed
             ? evalExpr(callee.property, scope)
@@ -1012,6 +1668,20 @@ export function generateTrace(source) {
               );
             }
           }
+
+          // Object methods
+          if (memberObj === Object && builtins.OBJECT_METHODS[propName]) {
+            const args = evalArgs(node.arguments, scope);
+            const nativeArgs = args.map((arg) => convertCallback(arg));
+            try {
+              return builtins.OBJECT_METHODS[propName](...nativeArgs);
+            } catch (e) {
+              throw new ExecutionError(
+                `TypeError: ${e.message}`,
+                node.loc?.start.line
+              );
+            }
+          }
         }
 
         // Handle user-defined functions
@@ -1024,14 +1694,18 @@ export function generateTrace(source) {
           }
 
           const args = evalArgs(node.arguments, scope);
+
+          // Handle generator functions
+          if (funcObj.isGenerator) {
+            return createGeneratorObject(funcObj, args, scope);
+          }
+
           const funcScope = createScope(funcObj.scope, funcName);
 
-          // Set `this` — for method calls, this is the object; for plain calls, this is undefined
           if (thisVal !== undefined) {
             defineVar('this', thisVal, funcScope);
           }
 
-          // Support destructured params (ArrayPattern, ObjectPattern, etc.)
           const params = funcObj.node.params || [];
           for (let i = 0; i < params.length; i++) {
             convertParam(params[i], args[i], funcScope);
@@ -1040,7 +1714,6 @@ export function generateTrace(source) {
           funcScope._isFuncScope = true;
           callStack.push({ name: funcName, scope: funcScope });
 
-          // Record function call info
           const paramNames = params
             .filter((p) => p.type === 'Identifier')
             .map((p) => p.name);
@@ -1056,15 +1729,19 @@ export function generateTrace(source) {
           const prevLen = callStack.length;
           const result = execNode(funcObj.node.body, funcScope, true);
 
-          // Pop from call stack if return didn't already pop
           if (result !== '__return__' && callStack.length >= prevLen) {
             callStack.pop();
+          }
+
+          // If async function, wrap result in a promise
+          if (funcObj.isAsync) {
+            return createInterpreterPromiseResolve(funcScope._returnValue);
           }
 
           return funcScope._returnValue;
         }
 
-        // Handle built-in/native functions
+        // Handle native functions
         if (typeof funcObj === 'function') {
           const args = evalArgs(node.arguments, scope);
           const nativeArgs = args.map((arg) => convertCallback(arg));
@@ -1072,6 +1749,16 @@ export function generateTrace(source) {
             return funcObj.call(memberObj, ...nativeArgs);
           }
           return funcObj(...nativeArgs);
+        }
+
+        // Handle interpreter internal functions (Promise, etc.)
+        if (funcObj && typeof funcObj === 'object' && funcObj._type === 'interpreter-function') {
+          const args = evalArgs(node.arguments, scope);
+          const nativeArgs = args.map((arg) => convertCallback(arg));
+          if (callee.type === 'MemberExpression' && memberObj !== undefined && memberObj !== null) {
+            return funcObj.fn.call(memberObj, ...nativeArgs);
+          }
+          return funcObj.fn(...nativeArgs);
         }
 
         if (funcObj !== undefined && funcObj !== null && typeof funcObj !== 'function') {
@@ -1146,11 +1833,18 @@ export function generateTrace(source) {
       case 'ObjectExpression': {
         const obj = {};
         for (const prop of node.properties) {
-          const key =
-            prop.key.type === 'Identifier'
-              ? prop.key.name
-              : evalExpr(prop.key, scope);
-          obj[key] = evalExpr(prop.value, scope);
+          if (prop.type === 'SpreadElement') {
+            const spreadVal = evalExpr(prop.argument, scope);
+            if (spreadVal && typeof spreadVal === 'object') {
+              Object.assign(obj, spreadVal);
+            }
+          } else {
+            const key =
+              prop.key.type === 'Identifier'
+                ? prop.key.name
+                : evalExpr(prop.key, scope);
+            obj[key] = evalExpr(prop.value, scope);
+          }
         }
         return obj;
       }
@@ -1161,6 +1855,8 @@ export function generateTrace(source) {
           name: 'arrow',
           node: { params: node.params, body: node.body },
           scope,
+          isGenerator: false,
+          isAsync: node.async || false,
         };
       }
 
@@ -1170,6 +1866,8 @@ export function generateTrace(source) {
           name: node.id ? node.id.name : 'anonymous',
           node: { params: node.params, body: node.body },
           scope,
+          isGenerator: node.generator || false,
+          isAsync: node.async || false,
         };
       }
 
@@ -1194,12 +1892,29 @@ export function generateTrace(source) {
 
       case 'AwaitExpression': {
         const innerVal = evalExpr(node.argument, scope);
+
+        // If it's an interpreter promise, handle it properly
+        if (innerVal && typeof innerVal === 'object' && innerVal._type === 'promise') {
+          if (innerVal._state === 'fulfilled') return innerVal._value;
+          if (innerVal._state === 'rejected') throw innerVal._reason;
+          let resolved = undefined;
+          innerVal.then((v) => { resolved = v; }, (r) => { throw r; });
+          return resolved;
+        }
+
+        // If it's a native promise-like (thenable), handle it
         if (innerVal && typeof innerVal === 'object' && typeof innerVal.then === 'function') {
           let resolved = undefined;
           innerVal.then((v) => { resolved = v; }, () => {});
           return resolved;
         }
+
         return innerVal;
+      }
+
+      case 'YieldExpression': {
+        const value = node.argument ? evalExpr(node.argument, scope) : undefined;
+        return { __yield__: value };
       }
 
       case 'NewExpression': {
@@ -1229,22 +1944,26 @@ export function generateTrace(source) {
         const args = evalArgs(node.arguments, scope);
         const nativeArgs = args.map((arg) => convertCallback(arg));
 
-        // For user-defined class constructors, create a plain object and run the constructor
-        if (constructorFunc.type === 'function') {
-          const instance = {};
-          const funcScope = createScope(constructorFunc.scope, constructorName);
-          defineVar('this', instance, funcScope);
-          for (let i = 0; i < constructorFunc.node.params.length; i++) {
-            defineVar(constructorFunc.node.params[i].name, nativeArgs[i], funcScope);
-          }
-          funcScope._isFuncScope = true;
-          callStack.push({ name: constructorName, scope: funcScope });
-          execNode(constructorFunc.node.body, funcScope, true);
-          if (callStack.length > 1) callStack.pop();
-          return instance;
+        // For user-defined class constructors, call via the constructorFn
+        if (constructorFunc.__classObj__) {
+          return constructorFunc(...nativeArgs);
         }
 
         // For native constructors (Date, Map, Set, Promise, RegExp, Error, etc.)
+        if (constructorName === 'Promise') {
+          // Use our interpreter Promise
+          const executor = nativeArgs[0];
+          return createInterpreterPromise((resolve, reject) => {
+            if (typeof executor === 'function') {
+              try {
+                executor(resolve, reject);
+              } catch (e) {
+                reject(e);
+              }
+            }
+          });
+        }
+
         return new constructorFunc(...nativeArgs);
       }
 
@@ -1258,8 +1977,6 @@ export function generateTrace(source) {
   }
 
   function setVar(name, value, scope) {
-    // Assignment expressions must update the variable where it was originally declared.
-    // Walk up the scope chain to find the existing binding and update it there.
     let current = scope;
     while (current) {
       if (name in current._vars) {
@@ -1268,12 +1985,9 @@ export function generateTrace(source) {
       }
       current = current._parent;
     }
-    // Variable not found — create in current scope (non-strict mode behavior)
     scope._vars[name] = value;
   }
 
-  // defineVar always creates a new binding in the given scope (no parent walk).
-  // Used by let/const declarations and function parameter registration.
   function defineVar(name, value, scope) {
     scope._vars[name] = value;
     userDefinedVars.add(name);
@@ -1292,16 +2006,13 @@ export function generateTrace(source) {
   }
 
   function collectVisibleVars(scope, result) {
-    // Collect from outermost to innermost so innermost wins
     if (scope._parent) collectVisibleVars(scope._parent, result);
     for (const [key, value] of Object.entries(scope._vars)) {
-      // Don't include internal properties or native globals
       if (key.startsWith('_')) continue;
       if (globalVarNames.has(key) && !userDefinedVars.has(key)) continue;
       result[key] = value;
     }
   }
-
 
 }
 
@@ -1310,6 +2021,8 @@ function formatValue(val) {
   if (val === null) return 'null';
   if (typeof val === 'string') return val;
   if (typeof val === 'boolean') return val ? 'true' : 'false';
+  if (typeof val === 'object' && val !== null && val._type === 'promise') return '[Promise]';
+  if (typeof val === 'object' && val !== null && val._type === 'generator') return '[Generator]';
   if (typeof val === 'object' && Array.isArray(val)) return JSON.stringify(val);
   if (typeof val === 'object') return JSON.stringify(val);
   return String(val);

@@ -295,9 +295,6 @@ const ARRAY_METHODS = {
     return result;
   },
 
-  indexOf: Array.prototype.indexOf,
-  includes: Array.prototype.includes,
-
   pop() {
     if (this.length === 0) return undefined;
     const last = this[this.length - 1];
