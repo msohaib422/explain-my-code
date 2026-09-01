@@ -1,5 +1,35 @@
 import { useEffect, useState, useRef } from 'react';
 
+function formatValue(val) {
+  if (val === undefined) return 'undefined';
+  if (val === null) return 'null';
+  if (typeof val === 'string') {
+    if (val.length > 20) return `"${val.slice(0, 18)}…"` ;
+    return `"${val}"`;
+  }
+  if (typeof val === 'number' || typeof val === 'boolean') return String(val);
+  if (typeof val === 'function') return 'ƒ';
+  if (Array.isArray(val)) {
+    if (val.length === 0) return '[]';
+    const inner = val.length > 3 ? `${val.length} items` : val.map(formatValue).join(', ');
+    return `[${inner}]`;
+  }
+  if (typeof val === 'object') {
+    const keys = Object.keys(val);
+    if (keys.length === 0) return '{}';
+    if (keys.length > 4) return `{${keys.length} keys}`;
+    return `{${keys.map((k) => `${k}: ${formatValue(val[k])}`).join(', ')}}`;
+  }
+  return String(val);
+}
+
+function frameLabel(frame) {
+  if (typeof frame === 'string') return frame;
+  const { name, args } = frame;
+  if (!args || args.length === 0) return name;
+  return `${name}(${args.map(formatValue).join(', ')})`;
+}
+
 export default function CallStackPanel({ callStack, functionCall }) {
   const [prevStack, setPrevStack] = useState([]);
   const [animating, setAnimating] = useState(new Set());
@@ -7,14 +37,15 @@ export default function CallStackPanel({ callStack, functionCall }) {
 
   useEffect(() => {
     const pushing = new Set();
-    for (const name of callStack) {
-      if (!prevStack.includes(name)) {
-        pushing.add(name);
-        if (timers.current[name]) clearTimeout(timers.current[name]);
-        timers.current[name] = setTimeout(() => {
+    for (const frame of callStack) {
+      const key = typeof frame === 'string' ? frame : `${frame.name}`;
+      if (!prevStack.some((p) => (typeof p === 'string' ? p : p.name) === key)) {
+        pushing.add(key);
+        if (timers.current[key]) clearTimeout(timers.current[key]);
+        timers.current[key] = setTimeout(() => {
           setAnimating((s) => {
             const n = new Set(s);
-            n.delete(name);
+            n.delete(key);
             return n;
           });
         }, 600);
@@ -42,12 +73,14 @@ export default function CallStackPanel({ callStack, functionCall }) {
         <div className="space-y-1">
           {reversedStack.map((frame, i) => {
             const isTop = i === 0;
-            const isAnimating = animating.has(frame);
+            const key = typeof frame === 'string' ? frame : `${frame.name}`;
+            const isAnimating = animating.has(key);
             const frameIndex = callStack.length - 1 - i;
+            const label = frameLabel(frame);
 
             return (
               <div
-                key={`${frame}-${frameIndex}`}
+                key={`${key}-${frameIndex}`}
                 className="transition-all duration-200"
                 style={{
                   opacity: isAnimating ? 0.5 : 1,
@@ -85,7 +118,7 @@ export default function CallStackPanel({ callStack, functionCall }) {
                           : 'var(--color-text-primary)',
                       }}
                     >
-                      {frame}
+                      {label}
                     </span>
                   </div>
                 </div>

@@ -142,9 +142,18 @@ export default function App() {
     [handleReset]
   );
 
+  const handleClear = useCallback(() => {
+    setIsPlaying(false);
+    if (playRef.current) clearInterval(playRef.current);
+    setCode('');
+    setTrace(null);
+    setCurrentStep(0);
+    setError(null);
+  }, []);
+
   return (
     <div className="h-full flex flex-col" style={{ background: 'var(--color-bg-primary)' }} data-theme={theme}>
-      <Header onRun={handleRun} theme={theme} onThemeChange={setTheme} code={code} />
+      <Header onRun={handleRun} theme={theme} onThemeChange={setTheme} code={code} onClear={handleClear} />
 
       <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
         {/* Left: Code Editor */}

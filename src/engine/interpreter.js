@@ -50,7 +50,7 @@ export function generateTrace(source) {
   let accumulatedOutput = [];
 
   const env = createScope(null, 'global');
-  callStack.push({ name: 'global', scope: env });
+  callStack.push({ name: 'global', scope: env, args: [] });
 
   const knownGlobals = {
     JSON, Math, console, Array, Object, String, Number, Boolean,
@@ -144,7 +144,7 @@ export function generateTrace(source) {
         if (funcObj._thisValue !== undefined) {
           defineVar('this', funcObj._thisValue, cbScope);
         }
-        callStack.push({ name: funcObj.name || 'callback', scope: cbScope });
+        callStack.push({ name: funcObj.name || 'callback', scope: cbScope, args: cbArgs });
         const prevLen = callStack.length;
         if (funcObj.node.body.type === 'BlockStatement') {
           execNode(funcObj.node.body, cbScope, true);
@@ -182,7 +182,7 @@ export function generateTrace(source) {
       step: stepCount++,
       line: line || 0,
       variables: { ...vars },
-      callStack: callStack.map((f) => f.name),
+      callStack: callStack.map((f) => ({ name: f.name, args: f.args || [] })),
       output: [...accumulatedOutput],
       scope: callStack.length > 0 ? callStack[callStack.length - 1].name : 'global',
       status: 'running',
@@ -214,7 +214,7 @@ export function generateTrace(source) {
         step: stepCount,
         line: lastStep.line,
         variables: { ...lastStep.variables },
-        callStack: callStack.map((f) => f.name),
+        callStack: callStack.map((f) => ({ name: f.name, args: f.args || [] })),
         output: [...accumulatedOutput],
         scope: 'global',
         status: 'completed',
@@ -674,7 +674,7 @@ export function generateTrace(source) {
           convertParam(classObj.constructor.node.params[i], args[i], consScope);
         }
         consScope._isFuncScope = true;
-        callStack.push({ name: className, scope: consScope });
+        callStack.push({ name: className, scope: consScope, args });
         const prevLen = callStack.length;
         execNode(classObj.constructor.node.body, consScope, true);
         if (callStack.length >= prevLen) callStack.pop();
@@ -691,7 +691,7 @@ export function generateTrace(source) {
           defineVar(method.node.params[i].name, mArgs[i], methodScope);
         }
         methodScope._isFuncScope = true;
-        callStack.push({ name, scope: methodScope });
+        callStack.push({ name, scope: methodScope, args: mArgs });
         const prevLen = callStack.length;
         execNode(method.node.body, methodScope, true);
         if (callStack.length >= prevLen) callStack.pop();
@@ -725,7 +725,7 @@ export function generateTrace(source) {
           defineVar('super', superObj, methodScope);
         }
 
-        callStack.push({ name, scope: methodScope });
+        callStack.push({ name, scope: methodScope, args: mArgs });
         const prevLen = callStack.length;
         execNode(method.node.body, methodScope, true);
         if (callStack.length >= prevLen) callStack.pop();
@@ -1359,7 +1359,7 @@ export function generateTrace(source) {
       convertParam(params[i], args[i], funcScope);
     }
     funcScope._isFuncScope = true;
-    callStack.push({ name: funcObj.name || 'anonymous', scope: funcScope });
+    callStack.push({ name: funcObj.name || 'anonymous', scope: funcScope, args });
 
     const paramNames = params
       .filter((p) => p.type === 'Identifier')
@@ -1712,7 +1712,7 @@ export function generateTrace(source) {
           }
 
           funcScope._isFuncScope = true;
-          callStack.push({ name: funcName, scope: funcScope });
+          callStack.push({ name: funcName, scope: funcScope, args });
 
           const paramNames = params
             .filter((p) => p.type === 'Identifier')
