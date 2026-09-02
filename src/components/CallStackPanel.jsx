@@ -62,14 +62,17 @@ export default function CallStackPanel({ callStack, callStackHistory }) {
 
   if (!hasActive && !hasRemoved) {
     return (
-      <div className="p-3">
-        <h3
-          className="text-[11px] uppercase tracking-wider font-medium mb-3"
-          style={{ color: 'var(--color-text-secondary)' }}
-        >
-          Call Stack
-        </h3>
-        <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+      <div className="p-4 space-y-3">
+        <div className="flex items-center gap-2 mb-1">
+          <div className="w-1 h-4 rounded-full" style={{ background: 'var(--color-accent)' }} />
+          <h3
+            className="text-[11px] uppercase tracking-wider font-bold"
+            style={{ color: 'var(--color-text-muted)' }}
+          >
+            Call Stack
+          </h3>
+        </div>
+        <p className="text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>
           Stack is empty
         </p>
       </div>
@@ -77,14 +80,20 @@ export default function CallStackPanel({ callStack, callStackHistory }) {
   }
 
   return (
-    <div className="p-3">
-      <h3
-        className="text-[11px] uppercase tracking-wider font-medium mb-3"
-        style={{ color: 'var(--color-text-secondary)' }}
-      >
-        Call Stack
-      </h3>
-      <div className="space-y-1">
+    <div className="p-4 space-y-3">
+      <div className="flex items-center gap-2 mb-1">
+        <div className="w-1 h-4 rounded-full" style={{ background: 'var(--color-accent)' }} />
+        <h3
+          className="text-[11px] uppercase tracking-wider font-bold"
+          style={{ color: 'var(--color-text-muted)' }}
+        >
+          Call Stack
+        </h3>
+        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'var(--color-bg-tertiary)', color: 'var(--color-text-muted)' }}>
+          {activeFrames.length}
+        </span>
+      </div>
+      <div className="space-y-2">
         {activeFrames.map((frame, i) => {
           const isTop = i === 0;
           const key = `active-${typeof frame === 'string' ? frame : frame.name}-${i}`;
@@ -94,38 +103,42 @@ export default function CallStackPanel({ callStack, callStackHistory }) {
           return (
             <div
               key={key}
-              className="transition-all duration-200"
+              className="transition-all duration-300"
               style={{
                 opacity: isAnimating ? 0.5 : 1,
                 transform: isAnimating ? 'scale(0.97)' : 'scale(1)',
               }}
             >
               <div
-                className="px-3 py-2 rounded text-sm font-mono"
+                className="px-4 py-3 rounded-xl text-sm font-mono"
                 style={{
                   background: isTop
-                    ? 'rgba(88, 166, 255, 0.12)'
-                    : 'var(--color-bg-tertiary)',
+                    ? 'linear-gradient(135deg, rgba(77, 171, 247, 0.1), rgba(151, 117, 250, 0.06))'
+                    : 'var(--color-bg-secondary)',
                   border: isTop
-                    ? '1px solid rgba(88, 166, 255, 0.3)'
+                    ? '1px solid rgba(77, 171, 247, 0.25)'
                     : '1px solid var(--color-border)',
+                  boxShadow: isTop
+                    ? '0 4px 16px rgba(77, 171, 247, 0.1)'
+                    : '0 1px 3px rgba(0, 0, 0, 0.06)',
                 }}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2.5">
                     {isTop && (
                       <span
-                        className="text-[9px] font-bold px-1 py-0.5 rounded"
+                        className="text-[9px] font-black px-2 py-0.5 rounded-md"
                         style={{
-                          background: 'var(--color-accent)',
-                          color: '#000',
+                          background: 'linear-gradient(135deg, #4dabf7, #339af0)',
+                          color: '#fff',
+                          boxShadow: '0 2px 6px rgba(77, 171, 247, 0.3)',
                         }}
                       >
                         TOP
                       </span>
                     )}
                     <span
-                      className="text-xs"
+                      className="text-xs font-semibold"
                       style={{
                         color: isTop
                           ? 'var(--color-accent)'
@@ -136,10 +149,11 @@ export default function CallStackPanel({ callStack, callStackHistory }) {
                     </span>
                   </div>
                   <span
-                    className="text-[9px] font-medium px-1.5 py-0.5 rounded shrink-0"
+                    className="text-[9px] font-bold px-2 py-0.5 rounded-md shrink-0"
                     style={{
-                      background: 'rgba(63, 185, 80, 0.15)',
+                      background: 'rgba(64, 192, 87, 0.12)',
                       color: 'var(--color-success)',
+                      border: '1px solid rgba(64, 192, 87, 0.2)',
                     }}
                   >
                     Added
@@ -147,17 +161,10 @@ export default function CallStackPanel({ callStack, callStackHistory }) {
                 </div>
               </div>
               {(i < activeFrames.length - 1 || hasRemoved) && (
-                <div
-                  className="flex justify-center py-0.5"
-                  style={{ color: 'var(--color-border)' }}
-                >
-                  <svg
-                    width="10"
-                    height="10"
-                    viewBox="0 0 16 16"
-                    fill="currentColor"
-                  >
-                    <path d="M8 12L2 6h12z" />
+                <div className="flex justify-center py-1" style={{ color: 'var(--color-border)' }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <polyline points="19 12 12 19 5 12"/>
                   </svg>
                 </div>
               )}
@@ -172,27 +179,26 @@ export default function CallStackPanel({ callStack, callStackHistory }) {
           return (
             <div key={`removed-${entry.id}-${i}`}>
               <div
-                className="px-3 py-2 rounded text-sm font-mono"
+                className="px-4 py-3 rounded-xl text-sm font-mono"
                 style={{
                   background: 'var(--color-bg-tertiary)',
-                  border: '1px solid var(--color-border)',
-                  opacity: 0.5,
+                  border: '1px dashed var(--color-border)',
+                  opacity: 0.7,
                 }}
               >
                 <div className="flex items-center justify-between gap-2">
                   <span
-                    className="text-xs"
-                    style={{
-                      color: 'var(--color-text-secondary)',
-                    }}
+                    className="text-xs font-medium"
+                    style={{ color: 'var(--color-text-secondary)' }}
                   >
                     {label}
                   </span>
                   <span
-                    className="text-[9px] font-medium px-1.5 py-0.5 rounded shrink-0"
+                    className="text-[9px] font-bold px-2 py-0.5 rounded-md shrink-0"
                     style={{
-                      background: 'rgba(248, 81, 73, 0.15)',
+                      background: 'rgba(255, 107, 107, 0.12)',
                       color: 'var(--color-error)',
+                      border: '1px solid rgba(255, 107, 107, 0.2)',
                     }}
                   >
                     Removed
@@ -200,17 +206,10 @@ export default function CallStackPanel({ callStack, callStackHistory }) {
                 </div>
               </div>
               {!isLast && (
-                <div
-                  className="flex justify-center py-0.5"
-                  style={{ color: 'var(--color-border)' }}
-                >
-                  <svg
-                    width="10"
-                    height="10"
-                    viewBox="0 0 16 16"
-                    fill="currentColor"
-                  >
-                    <path d="M8 12L2 6h12z" />
+                <div className="flex justify-center py-1" style={{ color: 'var(--color-border)' }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <polyline points="19 12 12 19 5 12"/>
                   </svg>
                 </div>
               )}

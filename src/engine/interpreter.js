@@ -1610,6 +1610,7 @@ export function generateTrace(source) {
               if (['log', 'warn', 'error', 'info', 'debug'].includes(propName)) {
                 const outputStr = args.map(formatValue).join(' ');
                 accumulatedOutput = [...accumulatedOutput, outputStr];
+                stepRecordedDuringEval = true;
                 record(line, { output: accumulatedOutput }, scope);
                 _consoleRecorded = true;
               }

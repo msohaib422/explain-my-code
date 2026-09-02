@@ -2,19 +2,10 @@ export default function ThemeToggle({ theme, onToggle }) {
   return (
     <button
       onClick={onToggle}
-      className="w-8 h-8 flex items-center justify-center rounded-md transition-all"
+      className="btn-icon"
       title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
       style={{
         color: 'var(--color-text-secondary)',
-        background: 'transparent',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = 'var(--color-bg-tertiary)';
-        e.currentTarget.style.color = 'var(--color-text-primary)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = 'transparent';
-        e.currentTarget.style.color = 'var(--color-text-secondary)';
       }}
     >
       {theme === 'dark' ? (

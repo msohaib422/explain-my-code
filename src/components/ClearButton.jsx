@@ -2,19 +2,10 @@ export default function ClearButton({ onClear }) {
   return (
     <button
       onClick={onClear}
-      className="w-8 h-8 flex items-center justify-center rounded-md transition-all"
+      className="btn-icon"
       title="Clear code"
       style={{
         color: 'var(--color-text-secondary)',
-        background: 'transparent',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = 'var(--color-bg-tertiary)';
-        e.currentTarget.style.color = 'var(--color-text-primary)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = 'transparent';
-        e.currentTarget.style.color = 'var(--color-text-secondary)';
       }}
     >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

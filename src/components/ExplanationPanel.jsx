@@ -1,17 +1,17 @@
 import { useEffect, useRef, useMemo } from 'react';
 
 const TYPE_COLORS = {
-  variable: { bg: 'rgba(63, 185, 80, 0.1)', border: 'rgba(63, 185, 80, 0.3)', label: 'Variable' },
-  assignment: { bg: 'rgba(88, 166, 255, 0.1)', border: 'rgba(88, 166, 255, 0.3)', label: 'Assignment' },
-  condition: { bg: 'rgba(210, 153, 34, 0.1)', border: 'rgba(210, 153, 34, 0.3)', label: 'Condition' },
-  loop: { bg: 'rgba(210, 153, 34, 0.1)', border: 'rgba(210, 153, 34, 0.3)', label: 'Loop' },
-  'function-decl': { bg: 'rgba(163, 113, 247, 0.1)', border: 'rgba(163, 113, 247, 0.3)', label: 'Function' },
-  'function-call': { bg: 'rgba(163, 113, 247, 0.1)', border: 'rgba(163, 113, 247, 0.3)', label: 'Call' },
-  return: { bg: 'rgba(248, 133, 73, 0.1)', border: 'rgba(248, 133, 73, 0.3)', label: 'Return' },
-  console: { bg: 'rgba(136, 136, 136, 0.1)', border: 'rgba(136, 136, 136, 0.3)', label: 'Console' },
-  class: { bg: 'rgba(163, 113, 247, 0.1)', border: 'rgba(163, 113, 247, 0.3)', label: 'Class' },
-  completed: { bg: 'rgba(63, 185, 80, 0.15)', border: 'rgba(63, 185, 80, 0.4)', label: 'Done' },
-  statement: { bg: 'var(--color-bg-tertiary)', border: 'var(--color-border)', label: '' },
+  variable: { bg: 'rgba(64, 192, 87, 0.08)', border: 'rgba(64, 192, 87, 0.25)', label: 'Variable', icon: '📦' },
+  assignment: { bg: 'rgba(77, 171, 247, 0.08)', border: 'rgba(77, 171, 247, 0.25)', label: 'Assignment', icon: '✏️' },
+  condition: { bg: 'rgba(250, 176, 5, 0.08)', border: 'rgba(250, 176, 5, 0.25)', label: 'Condition', icon: '🔀' },
+  loop: { bg: 'rgba(250, 176, 5, 0.08)', border: 'rgba(250, 176, 5, 0.25)', label: 'Loop', icon: '🔄' },
+  'function-decl': { bg: 'rgba(134, 114, 255, 0.08)', border: 'rgba(134, 114, 255, 0.25)', label: 'Function', icon: 'ƒ' },
+  'function-call': { bg: 'rgba(134, 114, 255, 0.08)', border: 'rgba(134, 114, 255, 0.25)', label: 'Call', icon: '📞' },
+  return: { bg: 'rgba(255, 146, 43, 0.08)', border: 'rgba(255, 146, 43, 0.25)', label: 'Return', icon: '↩️' },
+  console: { bg: 'rgba(122, 139, 168, 0.08)', border: 'rgba(122, 139, 168, 0.25)', label: 'Console', icon: '💻' },
+  class: { bg: 'rgba(134, 114, 255, 0.08)', border: 'rgba(134, 114, 255, 0.25)', label: 'Class', icon: '🏗️' },
+  completed: { bg: 'rgba(64, 192, 87, 0.1)', border: 'rgba(64, 192, 87, 0.3)', label: 'Done', icon: '✅' },
+  statement: { bg: 'var(--color-bg-tertiary)', border: 'var(--color-border)', label: '', icon: '📄' },
 };
 
 function ExplanationEntry({ entry, isActive, stepNum }) {
@@ -20,66 +20,71 @@ function ExplanationEntry({ entry, isActive, stepNum }) {
 
   return (
     <div
-      className="animate-fade-in"
+      className="animate-fade-in rounded-xl overflow-hidden"
       style={{
-        padding: '8px 10px',
-        borderRadius: '6px',
-        background: isActive ? colors.bg : 'transparent',
-        border: isActive ? `1px solid ${colors.border}` : '1px solid transparent',
-        transition: 'all 0.2s ease',
+        background: isActive
+          ? `linear-gradient(135deg, ${colors.bg}, transparent)`
+          : 'var(--color-bg-secondary)',
+        border: isActive ? `1px solid ${colors.border}` : '1px solid var(--color-border)',
+        boxShadow: isActive ? `0 4px 16px ${colors.bg}` : '0 1px 2px rgba(0, 0, 0, 0.04)',
+        transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
       }}
     >
-      <div className="flex items-center gap-2 mb-1.5">
-        <span
-          className="text-[10px] font-bold px-1.5 py-0.5 rounded"
-          style={{
-            background: isActive ? 'var(--color-accent)' : 'var(--color-bg-tertiary)',
-            color: isActive ? '#000' : 'var(--color-text-secondary)',
-          }}
-        >
-          Step {stepNum + 1}
-        </span>
-        {colors.label && (
+      <div className="px-4 py-3">
+        <div className="flex items-center gap-2 mb-2">
           <span
-            className="text-[9px] px-1 py-0.5 rounded"
+            className="text-[10px] font-black px-2 py-0.5 rounded-md"
             style={{
-              background: colors.bg,
-              color: 'var(--color-text-secondary)',
-              border: `1px solid ${colors.border}`,
+              background: isActive ? 'linear-gradient(135deg, #4dabf7, #339af0)' : 'var(--color-bg-tertiary)',
+              color: isActive ? '#fff' : 'var(--color-text-muted)',
+              boxShadow: isActive ? '0 2px 6px rgba(77, 171, 247, 0.3)' : 'none',
             }}
           >
-            {colors.label}
+            Step {stepNum + 1}
           </span>
-        )}
-        {entry.lineNumber > 0 && (
-          <span
-            className="text-[9px] font-mono"
-            style={{ color: 'var(--color-text-secondary)', opacity: 0.6 }}
-          >
-            L{entry.lineNumber}
-          </span>
-        )}
-      </div>
-
-      {entry.sourceLine && entry.sourceLine.trim() && (
-        <div
-          className="font-mono text-[11px] px-2 py-1 rounded mb-1.5"
-          style={{
-            background: 'var(--color-bg-primary)',
-            color: 'var(--color-text-primary)',
-            borderLeft: `2px solid ${colors.border}`,
-          }}
-        >
-          {entry.sourceLine.trim()}
+          {colors.label && (
+            <span
+              className="text-[10px] px-2 py-0.5 rounded-md font-bold"
+              style={{
+                background: colors.bg,
+                color: 'var(--color-text-secondary)',
+                border: `1px solid ${colors.border}`,
+              }}
+            >
+              {colors.label}
+            </span>
+          )}
+          {entry.lineNumber > 0 && (
+            <span
+              className="text-[10px] font-mono font-bold"
+              style={{ color: 'var(--color-text-muted)', opacity: 0.5 }}
+            >
+              L{entry.lineNumber}
+            </span>
+          )}
         </div>
-      )}
 
-      <p
-        className="text-xs leading-relaxed"
-        style={{ color: 'var(--color-text-primary)' }}
-      >
-        {entry.explanation}
-      </p>
+        {entry.sourceLine && entry.sourceLine.trim() && (
+          <div
+            className="font-mono text-[11px] px-3 py-2 rounded-lg mb-2"
+            style={{
+              background: 'var(--color-bg-primary)',
+              color: 'var(--color-text-primary)',
+              borderLeft: `3px solid ${colors.border}`,
+              boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.05)',
+            }}
+          >
+            {entry.sourceLine.trim()}
+          </div>
+        )}
+
+        <p
+          className="text-xs leading-relaxed font-medium"
+          style={{ color: 'var(--color-text-primary)' }}
+        >
+          {entry.explanation}
+        </p>
+      </div>
     </div>
   );
 }
@@ -116,31 +121,39 @@ export default function ExplanationPanel({ explanations, currentStep }) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-3 pt-3 pb-1 shrink-0">
-        <h3
-          className="text-[11px] uppercase tracking-wider font-medium"
-          style={{ color: 'var(--color-text-secondary)' }}
-        >
-          Explanation
-        </h3>
+      <div className="px-4 pt-4 pb-2 shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="w-1 h-4 rounded-full" style={{ background: 'var(--color-accent)' }} />
+          <h3
+            className="text-[11px] uppercase tracking-wider font-bold"
+            style={{ color: 'var(--color-text-muted)' }}
+          >
+            Explanation
+          </h3>
+          {visibleEntries.length > 0 && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'var(--color-bg-tertiary)', color: 'var(--color-text-muted)' }}>
+              {visibleEntries.length}
+            </span>
+          )}
+        </div>
       </div>
 
       <div
         ref={containerRef}
-        className="flex-1 overflow-auto px-3 pb-3"
+        className="flex-1 overflow-auto px-4 pb-4"
         style={{ scrollBehavior: 'smooth' }}
       >
         {visibleEntries.length === 0 ? (
           <div
             className="flex items-center justify-center h-full"
-            style={{ color: 'var(--color-text-secondary)' }}
+            style={{ color: 'var(--color-text-muted)' }}
           >
-            <p className="text-xs italic">
+            <p className="text-xs italic font-medium">
               Step through execution to see explanations
             </p>
           </div>
         ) : (
-          <div className="space-y-1">
+          <div className="space-y-2">
             {visibleEntries.map((entry, i) => (
               <div
                 key={i}
