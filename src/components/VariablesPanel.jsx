@@ -62,7 +62,7 @@ function Chevron({ expanded }) {
       strokeLinecap="round"
       strokeLinejoin="round"
       style={{
-        transition: 'transform 0.2s ease',
+        transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
         transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
         opacity: 0.4,
       }}
@@ -128,29 +128,38 @@ export default function VariablesPanel({ variables, loopInfo, functionCall, info
   };
 
   return (
-    <div className="p-3">
+    <div className="p-4 space-y-3">
       {loopInfo && (
         <div
-          className="mb-3 px-3 py-2 rounded-lg text-xs"
+          className="px-4 py-3 rounded-xl text-xs"
           style={{
-            background: 'rgba(210, 153, 34, 0.08)',
-            border: '1px solid rgba(210, 153, 34, 0.25)',
+            background: 'linear-gradient(135deg, rgba(250, 176, 5, 0.06), rgba(250, 176, 5, 0.02))',
+            border: '1px solid rgba(250, 176, 5, 0.2)',
           }}
         >
-          <div className="flex items-center gap-2">
-            <span className="font-medium" style={{ color: 'var(--color-warning)' }}>Loop</span>
-            <span style={{ color: 'var(--color-text-secondary)' }}>
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-1.5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="17 1 21 5 17 9"/>
+                <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+                <polyline points="7 23 3 19 7 15"/>
+                <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+              </svg>
+              <span className="font-bold" style={{ color: 'var(--color-warning)' }}>Loop</span>
+            </div>
+            <span className="font-medium" style={{ color: 'var(--color-text-secondary)' }}>
               Iteration {loopInfo.iteration}
             </span>
             <span
-              className="px-1.5 py-0.5 rounded-full text-[10px] font-medium"
+              className="px-2 py-0.5 rounded-full text-[10px] font-bold"
               style={{
                 background: loopInfo.condition
-                  ? 'rgba(63, 185, 80, 0.15)'
-                  : 'rgba(248, 81, 73, 0.15)',
+                  ? 'rgba(64, 192, 87, 0.15)'
+                  : 'rgba(255, 107, 107, 0.15)',
                 color: loopInfo.condition
                   ? 'var(--color-success)'
                   : 'var(--color-error)',
+                border: `1px solid ${loopInfo.condition ? 'rgba(64, 192, 87, 0.25)' : 'rgba(255, 107, 107, 0.25)'}`,
               }}
             >
               {loopInfo.condition ? 'continue' : 'exit'}
@@ -161,15 +170,20 @@ export default function VariablesPanel({ variables, loopInfo, functionCall, info
 
       {functionCall && (
         <div
-          className="mb-3 px-3 py-2 rounded-lg text-xs"
+          className="px-4 py-3 rounded-xl text-xs"
           style={{
-            background: 'rgba(163, 113, 247, 0.08)',
-            border: '1px solid rgba(163, 113, 247, 0.25)',
+            background: 'linear-gradient(135deg, rgba(134, 114, 255, 0.06), rgba(134, 114, 255, 0.02))',
+            border: '1px solid rgba(134, 114, 255, 0.2)',
           }}
         >
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium" style={{ color: '#a371f7' }}>Call</span>
-            <span className="font-mono" style={{ color: 'var(--color-text-primary)' }}>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8672ff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+              <span className="font-bold" style={{ color: '#8672ff' }}>Call</span>
+            </div>
+            <span className="font-mono font-medium" style={{ color: 'var(--color-text-primary)' }}>
               {functionCall.name}(
               {Object.entries(functionCall.params)
                 .map(([k, v]) => `${k}=${formatCompact(v)}`)
@@ -182,45 +196,53 @@ export default function VariablesPanel({ variables, loopInfo, functionCall, info
 
       {info && !loopInfo && !functionCall && (
         <div
-          className="mb-3 px-3 py-2 rounded-lg text-xs"
+          className="px-4 py-3 rounded-xl text-xs"
           style={{
             background: 'var(--color-bg-tertiary)',
             border: '1px solid var(--color-border)',
           }}
         >
-          <span style={{ color: 'var(--color-text-secondary)' }}>{info}</span>
+          <span className="font-medium" style={{ color: 'var(--color-text-secondary)' }}>{info}</span>
         </div>
       )}
 
-      <h3
-        className="text-[11px] uppercase tracking-wider font-medium mb-2"
-        style={{ color: 'var(--color-text-secondary)' }}
-      >
-        Variables
-      </h3>
+      <div className="flex items-center gap-2 mb-1">
+        <div className="w-1 h-4 rounded-full" style={{ background: 'var(--color-accent)' }} />
+        <h3
+          className="text-[11px] uppercase tracking-wider font-bold"
+          style={{ color: 'var(--color-text-muted)' }}
+        >
+          Variables
+        </h3>
+        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'var(--color-bg-tertiary)', color: 'var(--color-text-muted)' }}>
+          {entries.length}
+        </span>
+      </div>
       {entries.length === 0 ? (
-        <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+        <p className="text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>
           No variables in scope
         </p>
       ) : (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1.5">
           {entries.map(([name, value]) => {
             const isChanged = changed.has(name);
             const isExpanded = expanded.has(name);
             const isExpandable = expandable(value);
 
             return (
-              <div key={name}>
+              <div
+                key={name}
+                className="rounded-xl overflow-hidden"
+                style={{
+                  border: isChanged ? '1px solid rgba(77, 171, 247, 0.25)' : '1px solid var(--color-border)',
+                  background: isChanged ? 'rgba(77, 171, 247, 0.04)' : 'var(--color-bg-secondary)',
+                  boxShadow: isChanged ? '0 2px 8px rgba(77, 171, 247, 0.08)' : '0 1px 2px rgba(0, 0, 0, 0.05)',
+                }}
+              >
                 <button
                   onClick={() => isExpandable && toggleExpand(name)}
-                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-left transition-all duration-200"
-                  style={{
-                    background: isChanged ? 'rgba(88, 166, 255, 0.1)' : 'transparent',
-                    borderLeft: isChanged
-                      ? '2px solid var(--color-accent)'
-                      : '2px solid transparent',
-                    cursor: isExpandable ? 'pointer' : 'default',
-                  }}
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left transition-all duration-200"
+                  style={{ cursor: isExpandable ? 'pointer' : 'default' }}
                 >
                   {isExpandable ? (
                     <Chevron expanded={isExpanded} />
@@ -228,17 +250,17 @@ export default function VariablesPanel({ variables, loopInfo, functionCall, info
                     <span style={{ width: 10 }} />
                   )}
                   <span
-                    className="font-mono text-xs font-medium"
+                    className="font-mono text-xs font-bold"
                     style={{ color: 'var(--color-accent)' }}
                   >
                     {name}
                   </span>
-                  <span className="text-[10px] mx-0.5" style={{ color: 'var(--color-text-secondary)', opacity: 0.5 }}>
+                  <span className="text-[10px] font-medium" style={{ color: 'var(--color-text-muted)' }}>
                     =
                   </span>
                   {!isExpandable && (
                     <span
-                      className="font-mono text-xs truncate"
+                      className="font-mono text-xs truncate font-medium"
                       style={{ color: 'var(--color-text-primary)' }}
                     >
                       {formatCompact(value)}
@@ -246,8 +268,8 @@ export default function VariablesPanel({ variables, loopInfo, functionCall, info
                   )}
                   {isExpandable && !isExpanded && (
                     <span
-                      className="font-mono text-xs"
-                      style={{ color: 'var(--color-text-secondary)', opacity: 0.6 }}
+                      className="font-mono text-xs font-medium"
+                      style={{ color: 'var(--color-text-muted)' }}
                     >
                       {formatCompact(value)}
                     </span>
@@ -255,7 +277,7 @@ export default function VariablesPanel({ variables, loopInfo, functionCall, info
                 </button>
                 {isExpandable && isExpanded && (
                   <div
-                    className="ml-5 mr-2 mb-1.5 px-3 py-2 rounded-md font-mono text-xs whitespace-pre-wrap break-all leading-relaxed"
+                    className="mx-3 mb-3 px-4 py-3 rounded-lg font-mono text-xs whitespace-pre-wrap break-all leading-relaxed"
                     style={{
                       background: 'var(--color-bg-primary)',
                       border: '1px solid var(--color-border)',

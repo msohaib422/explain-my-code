@@ -22,7 +22,7 @@ export default function App() {
   const [error, setError] = useState(null);
   const [speed, setSpeed] = useState(500);
   const [activePanel, setActivePanel] = useState('variables');
-  const [theme, setTheme] = useState('light');
+  const [theme, setTheme] = useState('dark');
   const playRef = useRef(null);
 
   const currentState =
@@ -82,7 +82,6 @@ export default function App() {
     setIsPlaying(false);
   }, []);
 
-  // Auto-play effect
   useEffect(() => {
     if (isPlaying && trace) {
       playRef.current = setInterval(() => {
@@ -100,12 +99,9 @@ export default function App() {
     };
   }, [isPlaying, trace, totalSteps, speed]);
 
-  // Keyboard shortcuts
   useEffect(() => {
     function handleKeyDown(e) {
-      // Don't intercept if user is typing in editor
       if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
-      // Don't intercept Monaco editor
       if (e.target.closest('.monaco-editor')) return;
 
       switch (e.key) {
@@ -162,18 +158,49 @@ export default function App() {
     setError(null);
   }, []);
 
+  const panelTabs = [
+    { id: 'variables', label: 'Variables', icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+        <path d="M2 17l10 5 10-5"/>
+        <path d="M2 12l10 5 10-5"/>
+      </svg>
+    )},
+    { id: 'callstack', label: 'Call Stack', icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="3" width="20" height="4" rx="1"/>
+        <rect x="4" y="7" width="16" height="4" rx="1"/>
+        <rect x="6" y="11" width="12" height="4" rx="1"/>
+      </svg>
+    )},
+    { id: 'console', label: 'Console', icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="4 17 10 11 4 5"/>
+        <line x1="12" y1="19" x2="20" y2="19"/>
+      </svg>
+    )},
+    { id: 'explanation', label: 'Explain', icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+    )},
+  ];
+
   return (
     <div className="h-full flex flex-col" style={{ background: 'var(--color-bg-primary)' }} data-theme={theme}>
       <Header onRun={handleRun} theme={theme} onThemeChange={setTheme} code={code} onClear={handleClear} />
 
-      <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden gap-0">
         {/* Left: Code Editor */}
         <div
           className="flex flex-col min-h-0"
           style={{ flex: '1 1 50%', minWidth: 0 }}
         >
+          {/* Example Selector Bar */}
           <div
-            className="flex items-center gap-2 px-3 py-1.5 overflow-x-auto"
+            className="flex items-center gap-2 px-4 py-2.5 overflow-x-auto"
             style={{
               borderBottom: '1px solid var(--color-border)',
               background: 'var(--color-bg-secondary)',
@@ -181,7 +208,8 @@ export default function App() {
           >
             <ExampleSelector examples={examples} onLoad={handleLoadExample} />
           </div>
-          <div className="flex-1 min-h-0">
+          {/* Editor Area */}
+          <div className="flex-1 min-h-0" style={{ background: 'var(--color-bg-primary)' }}>
             <CodeEditor
               code={code}
               onChange={handleCodeChange}
@@ -191,76 +219,82 @@ export default function App() {
           </div>
         </div>
 
+        {/* Divider */}
+        <div
+          className="hidden lg:block w-px shrink-0"
+          style={{ background: 'var(--color-border)' }}
+        />
+
         {/* Right: Visualization Panels */}
         <div
           className="flex flex-col min-h-0"
           style={{
             flex: '1 1 50%',
             minWidth: 0,
-            borderLeft: '1px solid var(--color-border)',
           }}
         >
           {/* Panel Tabs */}
           <div
-            className="flex items-center gap-0.5 px-2 py-1"
+            className="flex items-center gap-1 px-4 py-2.5"
             style={{
               borderBottom: '1px solid var(--color-border)',
               background: 'var(--color-bg-secondary)',
             }}
           >
-            {['variables', 'callstack', 'console', 'explanation'].map((panel) => (
-              <button
-                key={panel}
-                onClick={() => setActivePanel(panel)}
-                className="px-3 py-1 text-xs font-medium rounded transition-colors"
-                style={{
-                  background:
-                    activePanel === panel ? 'var(--color-bg-tertiary)' : 'transparent',
-                  color:
-                    activePanel === panel
-                      ? 'var(--color-text-primary)'
-                      : 'var(--color-text-secondary)',
-                }}
-              >
-                {panel === 'variables'
-                  ? 'Variables'
-                  : panel === 'callstack'
-                    ? 'Call Stack'
-                    : panel === 'console'
-                      ? 'Console'
-                      : 'Explain'}
-                {panel === 'console' && currentState && currentState.output.length > 0 && (
-                  <span
-                    className="ml-1 px-1 text-[10px] rounded"
-                    style={{
-                      background: 'var(--color-accent)',
-                      color: '#000',
-                    }}
-                  >
-                    {currentState.output.length}
-                  </span>
-                )}
-              </button>
-            ))}
+            {panelTabs.map((tab) => {
+              const isActive = activePanel === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActivePanel(tab.id)}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all duration-200"
+                  style={{
+                    background: isActive
+                      ? 'linear-gradient(135deg, rgba(77, 171, 247, 0.12), rgba(151, 117, 250, 0.08))'
+                      : 'transparent',
+                    color: isActive ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+                    border: isActive ? '1px solid rgba(77, 171, 247, 0.2)' : '1px solid transparent',
+                    boxShadow: isActive ? '0 2px 8px rgba(77, 171, 247, 0.1)' : 'none',
+                  }}
+                >
+                  <span style={{ opacity: isActive ? 1 : 0.6 }}>{tab.icon}</span>
+                  {tab.label}
+                  {tab.id === 'console' && currentState && currentState.output.length > 0 && (
+                    <span
+                      className="ml-0.5 px-1.5 text-[9px] rounded-full font-bold"
+                      style={{
+                        background: 'var(--color-accent)',
+                        color: '#fff',
+                        boxShadow: '0 1px 4px rgba(77, 171, 247, 0.3)',
+                      }}
+                    >
+                      {currentState.output.length}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
 
             {/* Step info */}
             {currentState && (
               <div className="ml-auto flex items-center gap-2">
                 <span
-                  className="text-[10px] font-mono px-1.5 py-0.5 rounded"
+                  className="text-[10px] font-mono px-2 py-1 rounded-md font-medium"
                   style={{
                     background: 'var(--color-bg-tertiary)',
                     color: 'var(--color-text-secondary)',
+                    border: '1px solid var(--color-border)',
                   }}
                 >
                   Line {currentState.line}
                 </span>
                 {currentState.status === 'completed' && (
                   <span
-                    className="text-[10px] font-medium px-1.5 py-0.5 rounded"
+                    className="text-[10px] font-bold px-2 py-1 rounded-md"
                     style={{
-                      background: 'rgba(63, 185, 80, 0.2)',
+                      background: 'rgba(64, 192, 87, 0.15)',
                       color: 'var(--color-success)',
+                      border: '1px solid rgba(64, 192, 87, 0.25)',
                     }}
                   >
                     Done
@@ -273,7 +307,7 @@ export default function App() {
           {/* Panel Content */}
           <div
             className="flex-1 min-h-0 overflow-auto"
-            style={{ background: 'var(--color-bg-secondary)' }}
+            style={{ background: 'var(--color-bg-primary)' }}
           >
             {error && <ErrorPanel error={error} />}
             {activePanel === 'variables' && currentState && (
@@ -303,31 +337,64 @@ export default function App() {
             )}
             {!currentState && !error && (
               <div
-                className="flex items-center justify-center h-full"
+                className="flex items-center justify-center h-full px-6"
                 style={{ color: 'var(--color-text-secondary)' }}
               >
-                <div className="text-center px-4">
+                <div className="text-center">
                   <div
-                    className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center"
-                    style={{ background: 'var(--color-bg-tertiary)' }}
+                    className="w-24 h-24 mx-auto mb-6 rounded-2xl flex items-center justify-center relative"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(77, 171, 247, 0.1), rgba(151, 117, 250, 0.1))',
+                      border: '1px solid var(--color-border)',
+                      boxShadow: '0 8px 32px rgba(77, 171, 247, 0.08)',
+                    }}
                   >
                     <svg
-                      width="32"
-                      height="32"
+                      width="40"
+                      height="40"
                       viewBox="0 0 24 24"
                       fill="none"
-                      stroke="currentColor"
+                      stroke="var(--color-accent)"
                       strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                     >
                       <polygon points="5 3 19 12 5 21 5 3" />
                     </svg>
+                    <div
+                      className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center"
+                      style={{
+                        background: 'var(--color-success)',
+                        boxShadow: '0 2px 6px rgba(64, 192, 87, 0.3)',
+                      }}
+                    >
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    </div>
                   </div>
-                  <p className="text-sm font-medium mb-1">
-                    Click "Run &amp; Visualize" to start
+                  <p className="text-sm font-bold mb-1.5" style={{ color: 'var(--color-text-primary)' }}>
+                    Ready to Visualize
                   </p>
-                  <p className="text-xs opacity-60">
-                    Or press Space after running
+                  <p className="text-xs mb-4" style={{ color: 'var(--color-text-muted)' }}>
+                    Write code or load an example, then run it
                   </p>
+                  <div className="flex items-center justify-center gap-2">
+                    <kbd
+                      className="px-2 py-1 rounded-md text-[10px] font-mono font-semibold"
+                      style={{
+                        background: 'var(--color-bg-tertiary)',
+                        border: '1px solid var(--color-border)',
+                        color: 'var(--color-text-secondary)',
+                        boxShadow: '0 2px 0 var(--color-border)',
+                      }}
+                    >
+                      Space
+                    </kbd>
+                    <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+                      to play/pause
+                    </span>
+                  </div>
                 </div>
               </div>
             )}
