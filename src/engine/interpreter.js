@@ -45,12 +45,30 @@ export function generateTrace(source) {
 
   const steps = [];
   const callStack = [];
+  const callStackHistory = [];
+  let frameIdCounter = 0;
   let stepCount = 0;
   let error = null;
   let accumulatedOutput = [];
 
+  function pushFrame(frame) {
+    const id = frameIdCounter++;
+    const entry = { id, name: frame.name, args: frame.args || [], status: 'Added' };
+    callStackHistory.push(entry);
+    callStack.push({ ...frame, _historyId: id });
+  }
+
+  function popFrame() {
+    if (callStack.length > 1) {
+      const frame = callStack[callStack.length - 1];
+      const entry = callStackHistory.find((e) => e.id === frame._historyId);
+      if (entry) entry.status = 'Removed';
+      callStack.pop();
+    }
+  }
+
   const env = createScope(null, 'global');
-  callStack.push({ name: 'global', scope: env, args: [] });
+  pushFrame({ name: 'global', scope: env, args: [] });
 
   const knownGlobals = {
     JSON, Math, console, Array, Object, String, Number, Boolean,
@@ -144,14 +162,13 @@ export function generateTrace(source) {
         if (funcObj._thisValue !== undefined) {
           defineVar('this', funcObj._thisValue, cbScope);
         }
-        callStack.push({ name: funcObj.name || 'callback', scope: cbScope, args: cbArgs });
-        const prevLen = callStack.length;
+        pushFrame({ name: funcObj.name || 'callback', scope: cbScope, args: cbArgs });
         if (funcObj.node.body.type === 'BlockStatement') {
           execNode(funcObj.node.body, cbScope, true);
         } else {
           cbScope._returnValue = evalExpr(funcObj.node.body, cbScope);
         }
-        if (callStack.length >= prevLen) callStack.pop();
+        popFrame();
         return cbScope._returnValue;
       };
     }
@@ -183,6 +200,7 @@ export function generateTrace(source) {
       line: line || 0,
       variables: { ...vars },
       callStack: callStack.map((f) => ({ name: f.name, args: f.args || [] })),
+      callStackHistory: callStackHistory.map((e) => ({ ...e })),
       output: [...accumulatedOutput],
       scope: callStack.length > 0 ? callStack[callStack.length - 1].name : 'global',
       status: 'running',
@@ -674,10 +692,9 @@ export function generateTrace(source) {
           convertParam(classObj.constructor.node.params[i], args[i], consScope);
         }
         consScope._isFuncScope = true;
-        callStack.push({ name: className, scope: consScope, args });
-        const prevLen = callStack.length;
+        pushFrame({ name: className, scope: consScope, args });
         execNode(classObj.constructor.node.body, consScope, true);
-        if (callStack.length >= prevLen) callStack.pop();
+        popFrame();
       }
 
       return instance;
@@ -691,10 +708,9 @@ export function generateTrace(source) {
           defineVar(method.node.params[i].name, mArgs[i], methodScope);
         }
         methodScope._isFuncScope = true;
-        callStack.push({ name, scope: methodScope, args: mArgs });
-        const prevLen = callStack.length;
+        pushFrame({ name, scope: methodScope, args: mArgs });
         execNode(method.node.body, methodScope, true);
-        if (callStack.length >= prevLen) callStack.pop();
+        popFrame();
         return methodScope._returnValue;
       };
     }
@@ -725,10 +741,9 @@ export function generateTrace(source) {
           defineVar('super', superObj, methodScope);
         }
 
-        callStack.push({ name, scope: methodScope, args: mArgs });
-        const prevLen = callStack.length;
+        pushFrame({ name, scope: methodScope, args: mArgs });
         execNode(method.node.body, methodScope, true);
-        if (callStack.length >= prevLen) callStack.pop();
+        popFrame();
         return methodScope._returnValue;
       };
     }
@@ -745,9 +760,7 @@ export function generateTrace(source) {
     const value = node.argument ? evalExpr(node.argument, scope) : undefined;
     if (!record(line, { returnValue: value }, scope)) return false;
 
-    if (callStack.length > 1) {
-      callStack.pop();
-    }
+    popFrame();
 
     let s = scope;
     while (s) {
@@ -1359,7 +1372,7 @@ export function generateTrace(source) {
       convertParam(params[i], args[i], funcScope);
     }
     funcScope._isFuncScope = true;
-    callStack.push({ name: funcObj.name || 'anonymous', scope: funcScope, args });
+    pushFrame({ name: funcObj.name || 'anonymous', scope: funcScope, args });
 
     const paramNames = params
       .filter((p) => p.type === 'Identifier')
@@ -1375,7 +1388,7 @@ export function generateTrace(source) {
       funcScope._returnValue = evalExpr(funcObj.node.body, funcScope);
     }
 
-    if (callStack.length > 0) callStack.pop();
+    popFrame();
     return funcScope._returnValue;
   }
 
@@ -1712,7 +1725,7 @@ export function generateTrace(source) {
           }
 
           funcScope._isFuncScope = true;
-          callStack.push({ name: funcName, scope: funcScope, args });
+          pushFrame({ name: funcName, scope: funcScope, args });
 
           const paramNames = params
             .filter((p) => p.type === 'Identifier')
@@ -1730,7 +1743,7 @@ export function generateTrace(source) {
           const result = execNode(funcObj.node.body, funcScope, true);
 
           if (result !== '__return__' && callStack.length >= prevLen) {
-            callStack.pop();
+            popFrame();
           }
 
           // If async function, wrap result in a promise

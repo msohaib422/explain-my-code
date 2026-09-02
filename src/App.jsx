@@ -274,7 +274,10 @@ export default function App() {
               />
             )}
             {activePanel === 'callstack' && currentState && (
-              <CallStackPanel callStack={currentState.callStack} />
+              <CallStackPanel
+                callStack={currentState.callStack}
+                callStackHistory={currentState.callStackHistory}
+              />
             )}
             {activePanel === 'console' && currentState && (
               <ConsolePanel

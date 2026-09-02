@@ -4,7 +4,7 @@ function formatValue(val) {
   if (val === undefined) return 'undefined';
   if (val === null) return 'null';
   if (typeof val === 'string') {
-    if (val.length > 20) return `"${val.slice(0, 18)}…"` ;
+    if (val.length > 20) return `"${val.slice(0, 18)}…"`;
     return `"${val}"`;
   }
   if (typeof val === 'number' || typeof val === 'boolean') return String(val);
@@ -24,13 +24,12 @@ function formatValue(val) {
 }
 
 function frameLabel(frame) {
-  if (typeof frame === 'string') return frame;
   const { name, args } = frame;
   if (!args || args.length === 0) return name;
   return `${name}(${args.map(formatValue).join(', ')})`;
 }
 
-export default function CallStackPanel({ callStack, functionCall }) {
+export default function CallStackPanel({ callStack, callStackHistory }) {
   const [prevStack, setPrevStack] = useState([]);
   const [animating, setAnimating] = useState(new Set());
   const timers = useRef({});
@@ -55,7 +54,27 @@ export default function CallStackPanel({ callStack, functionCall }) {
     setPrevStack([...callStack]);
   }, [callStack]);
 
-  const reversedStack = [...callStack].reverse();
+  const activeFrames = [...callStack].reverse();
+  const removedFrames = (callStackHistory || []).filter((e) => e.status === 'Removed');
+
+  const hasActive = activeFrames.length > 0;
+  const hasRemoved = removedFrames.length > 0;
+
+  if (!hasActive && !hasRemoved) {
+    return (
+      <div className="p-3">
+        <h3
+          className="text-[11px] uppercase tracking-wider font-medium mb-3"
+          style={{ color: 'var(--color-text-secondary)' }}
+        >
+          Call Stack
+        </h3>
+        <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+          Stack is empty
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-3">
@@ -65,39 +84,34 @@ export default function CallStackPanel({ callStack, functionCall }) {
       >
         Call Stack
       </h3>
-      {callStack.length === 0 ? (
-        <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-          Stack is empty
-        </p>
-      ) : (
-        <div className="space-y-1">
-          {reversedStack.map((frame, i) => {
-            const isTop = i === 0;
-            const key = typeof frame === 'string' ? frame : `${frame.name}`;
-            const isAnimating = animating.has(key);
-            const frameIndex = callStack.length - 1 - i;
-            const label = frameLabel(frame);
+      <div className="space-y-1">
+        {activeFrames.map((frame, i) => {
+          const isTop = i === 0;
+          const key = `active-${typeof frame === 'string' ? frame : frame.name}-${i}`;
+          const isAnimating = animating.has(typeof frame === 'string' ? frame : `${frame.name}`);
+          const label = frameLabel(frame);
 
-            return (
+          return (
+            <div
+              key={key}
+              className="transition-all duration-200"
+              style={{
+                opacity: isAnimating ? 0.5 : 1,
+                transform: isAnimating ? 'scale(0.97)' : 'scale(1)',
+              }}
+            >
               <div
-                key={`${key}-${frameIndex}`}
-                className="transition-all duration-200"
+                className="px-3 py-2 rounded text-sm font-mono"
                 style={{
-                  opacity: isAnimating ? 0.5 : 1,
-                  transform: isAnimating ? 'scale(0.97)' : 'scale(1)',
+                  background: isTop
+                    ? 'rgba(88, 166, 255, 0.12)'
+                    : 'var(--color-bg-tertiary)',
+                  border: isTop
+                    ? '1px solid rgba(88, 166, 255, 0.3)'
+                    : '1px solid var(--color-border)',
                 }}
               >
-                <div
-                  className="px-3 py-2 rounded text-sm font-mono"
-                  style={{
-                    background: isTop
-                      ? 'rgba(88, 166, 255, 0.12)'
-                      : 'var(--color-bg-tertiary)',
-                    border: isTop
-                      ? '1px solid rgba(88, 166, 255, 0.3)'
-                      : '1px solid var(--color-border)',
-                  }}
-                >
+                <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     {isTop && (
                       <span
@@ -121,27 +135,89 @@ export default function CallStackPanel({ callStack, functionCall }) {
                       {label}
                     </span>
                   </div>
-                </div>
-                {i < reversedStack.length - 1 && (
-                  <div
-                    className="flex justify-center py-0.5"
-                    style={{ color: 'var(--color-border)' }}
+                  <span
+                    className="text-[9px] font-medium px-1.5 py-0.5 rounded shrink-0"
+                    style={{
+                      background: 'rgba(63, 185, 80, 0.15)',
+                      color: 'var(--color-success)',
+                    }}
                   >
-                    <svg
-                      width="10"
-                      height="10"
-                      viewBox="0 0 16 16"
-                      fill="currentColor"
-                    >
-                      <path d="M8 12L2 6h12z" />
-                    </svg>
-                  </div>
-                )}
+                    Added
+                  </span>
+                </div>
               </div>
-            );
-          })}
-        </div>
-      )}
+              {(i < activeFrames.length - 1 || hasRemoved) && (
+                <div
+                  className="flex justify-center py-0.5"
+                  style={{ color: 'var(--color-border)' }}
+                >
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 16 16"
+                    fill="currentColor"
+                  >
+                    <path d="M8 12L2 6h12z" />
+                  </svg>
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {removedFrames.map((entry, i) => {
+          const label = frameLabel(entry);
+          const isLast = i === removedFrames.length - 1;
+
+          return (
+            <div key={`removed-${entry.id}-${i}`}>
+              <div
+                className="px-3 py-2 rounded text-sm font-mono"
+                style={{
+                  background: 'var(--color-bg-tertiary)',
+                  border: '1px solid var(--color-border)',
+                  opacity: 0.5,
+                }}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span
+                    className="text-xs"
+                    style={{
+                      color: 'var(--color-text-secondary)',
+                    }}
+                  >
+                    {label}
+                  </span>
+                  <span
+                    className="text-[9px] font-medium px-1.5 py-0.5 rounded shrink-0"
+                    style={{
+                      background: 'rgba(248, 81, 73, 0.15)',
+                      color: 'var(--color-error)',
+                    }}
+                  >
+                    Removed
+                  </span>
+                </div>
+              </div>
+              {!isLast && (
+                <div
+                  className="flex justify-center py-0.5"
+                  style={{ color: 'var(--color-border)' }}
+                >
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 16 16"
+                    fill="currentColor"
+                  >
+                    <path d="M8 12L2 6h12z" />
+                  </svg>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
