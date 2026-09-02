@@ -66,21 +66,6 @@ let result = factorial(5);
 console.log(result);`
   },
   {
-    name: "FizzBuzz",
-    description: "Classic FizzBuzz challenge",
-    code: `for (let i = 1; i <= 9; i++) {
-  if (i % 15 === 0) {
-    console.log("FizzBuzz");
-  } else if (i % 3 === 0) {
-    console.log("Fizz");
-  } else if (i % 5 === 0) {
-    console.log("Buzz");
-  } else {
-    console.log(i);
-  }
-}`
-  },
-  {
     name: "Nested Loops",
     description: "Loops inside loops",
     code: `for (let i = 1; i <= 3; i++) {
