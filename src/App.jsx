@@ -134,6 +134,17 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isPlaying, handlePlay, handlePause, handleNext, handlePrev, handleReset]);
 
+  const handleCodeChange = useCallback((newCode) => {
+    setCode(newCode);
+    if (trace) {
+      setIsPlaying(false);
+      if (playRef.current) clearInterval(playRef.current);
+      setTrace(null);
+      setCurrentStep(0);
+      setError(null);
+    }
+  }, [trace]);
+
   const handleLoadExample = useCallback(
     (example) => {
       setCode(example.code);
@@ -173,7 +184,7 @@ export default function App() {
           <div className="flex-1 min-h-0">
             <CodeEditor
               code={code}
-              onChange={setCode}
+              onChange={handleCodeChange}
               activeLine={currentState?.line}
               theme={theme}
             />
