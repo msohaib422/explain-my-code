@@ -113,7 +113,7 @@ src/
 - **Call stack visualization** with stack frame display
 - **Console output** synchronized with execution steps
 - **Error display** with line numbers and messages
-- **10 built-in examples** covering key concepts
+- **9 built-in examples** covering key concepts
 
 ### Examples Included
 
@@ -126,7 +126,6 @@ src/
 | Function Call | Functions, parameters, return values |
 | Array Traversal | Arrays, indexing, accumulation |
 | Factorial (Recursion) | Recursive function calls, call stack |
-| FizzBuzz | Conditionals, modulo, loops |
 | Nested Loops | Multi-level iteration |
 | Fibonacci | Recursion, repeated calls |
 

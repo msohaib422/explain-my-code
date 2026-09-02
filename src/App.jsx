@@ -218,7 +218,7 @@ export default function App() {
                     : panel === 'console'
                       ? 'Console'
                       : 'Explain'}
-                {panel === 'console' && trace && trace.steps.length > 0 && trace.steps[trace.steps.length - 1].output.length > 0 && (
+                {panel === 'console' && currentState && currentState.output.length > 0 && (
                   <span
                     className="ml-1 px-1 text-[10px] rounded"
                     style={{
@@ -226,7 +226,7 @@ export default function App() {
                       color: '#000',
                     }}
                   >
-                    {trace.steps[trace.steps.length - 1].output.length}
+                    {currentState.output.length}
                   </span>
                 )}
               </button>
@@ -281,11 +281,7 @@ export default function App() {
             )}
             {activePanel === 'console' && currentState && (
               <ConsolePanel
-                output={
-                  trace && trace.steps.length > 0
-                    ? trace.steps[trace.steps.length - 1].output
-                    : currentState.output
-                }
+                output={currentState.output}
               />
             )}
             {activePanel === 'explanation' && currentState && (
