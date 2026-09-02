@@ -13,6 +13,15 @@ import ExampleSelector from './components/ExampleSelector';
 import Header from './components/Header';
 
 const DEFAULT_CODE = examples[0].code;
+const THEME_STORAGE_KEY = 'explainmycode-theme';
+
+function getInitialTheme() {
+  try {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    if (stored === 'dark' || stored === 'light') return stored;
+  } catch {}
+  return 'light';
+}
 
 export default function App() {
   const [code, setCode] = useState(DEFAULT_CODE);
@@ -22,8 +31,14 @@ export default function App() {
   const [error, setError] = useState(null);
   const [speed, setSpeed] = useState(500);
   const [activePanel, setActivePanel] = useState('variables');
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState(getInitialTheme);
   const playRef = useRef(null);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch {}
+  }, [theme]);
 
   const currentState =
     trace && trace.steps[currentStep] ? trace.steps[currentStep] : null;

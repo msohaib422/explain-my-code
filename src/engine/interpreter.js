@@ -50,6 +50,7 @@ export function generateTrace(source) {
   let stepCount = 0;
   let error = null;
   let accumulatedOutput = [];
+  let stepRecordedDuringEval = false;
 
   function pushFrame(frame) {
     const id = frameIdCounter++;
@@ -365,8 +366,10 @@ export function generateTrace(source) {
   }
 
   function execExprStmt(node, scope) {
+    stepRecordedDuringEval = false;
     const result = evalExpr(node.expression, scope);
     if (result === '__return__') return '__return__';
+    if (stepRecordedDuringEval) return true;
     return record(node.loc?.start.line || 0, {}, scope);
   }
 
@@ -1607,6 +1610,7 @@ export function generateTrace(source) {
               if (['log', 'warn', 'error', 'info', 'debug'].includes(propName)) {
                 const outputStr = args.map(formatValue).join(' ');
                 accumulatedOutput = [...accumulatedOutput, outputStr];
+                stepRecordedDuringEval = true;
                 record(line, { output: accumulatedOutput }, scope);
               }
               return undefined;

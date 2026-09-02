@@ -181,15 +181,15 @@ export default function CallStackPanel({ callStack, callStackHistory }) {
               <div
                 className="px-4 py-3 rounded-xl text-sm font-mono"
                 style={{
-                  background: 'var(--color-bg-secondary)',
-                  border: '1px solid var(--color-border)',
-                  opacity: 0.45,
+                  background: 'var(--color-bg-tertiary)',
+                  border: '1px dashed var(--color-border)',
+                  opacity: 0.7,
                 }}
               >
                 <div className="flex items-center justify-between gap-2">
                   <span
                     className="text-xs font-medium"
-                    style={{ color: 'var(--color-text-muted)' }}
+                    style={{ color: 'var(--color-text-secondary)' }}
                   >
                     {label}
                   </span>
