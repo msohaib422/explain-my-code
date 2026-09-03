@@ -20,7 +20,7 @@ export default function Header({ onRun, theme, onThemeChange, code, onClear }) {
             <h1 className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
               ExplainMyCode
             </h1>
-            <p className="text-[10px]" style={{ color: 'var(--color-text-secondary)' }}>
+            <p className="text-[0.625rem]" style={{ color: 'var(--color-text-secondary)' }}>
               Visual Code Execution Animator
             </p>
           </div>

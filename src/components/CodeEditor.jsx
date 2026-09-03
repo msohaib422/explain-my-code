@@ -52,12 +52,12 @@ const EDITOR_LIGHT_THEME = {
 };
 
 const EDITOR_OPTIONS = {
-  fontSize: 14,
+  fontSize: 15,
   fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace",
-  lineHeight: 22,
+  lineHeight: 24,
   minimap: { enabled: false },
   scrollBeyondLastLine: false,
-  padding: { top: 12, bottom: 12 },
+  padding: { top: 13, bottom: 13 },
   renderLineHighlight: 'all',
   automaticLayout: true,
   tabSize: 2,
@@ -111,7 +111,7 @@ export default function CodeEditor({ code, onChange, activeLine, theme }) {
       <style>{`
         .active-line-highlight {
           background: var(--color-line-highlight) !important;
-          border-left: 3px solid var(--color-accent) !important;
+          border-left: 0.1875rem solid var(--color-accent) !important;
         }
         .active-line-gutter {
           background: var(--color-line-highlight) !important;
