@@ -14,6 +14,16 @@ import Header from './components/Header';
 
 const DEFAULT_CODE = examples[0].code;
 
+function getInitialTheme() {
+  if (typeof window !== 'undefined') {
+    var stored = localStorage.getItem('theme');
+    if (stored === 'light' || stored === 'dark') {
+      return stored;
+    }
+  }
+  return 'dark';
+}
+
 export default function App() {
   const [code, setCode] = useState(DEFAULT_CODE);
   const [trace, setTrace] = useState(null);
@@ -22,8 +32,18 @@ export default function App() {
   const [error, setError] = useState(null);
   const [speed, setSpeed] = useState(500);
   const [activePanel, setActivePanel] = useState('variables');
-  const [theme, setTheme] = useState('light');
+  const [theme, setTheme] = useState(getInitialTheme);
   const playRef = useRef(null);
+
+  useEffect(function () {
+    localStorage.setItem('theme', theme);
+    var root = document.documentElement;
+    root.classList.add('theme-switching');
+    root.setAttribute('data-theme', theme);
+    requestAnimationFrame(function () {
+      root.classList.remove('theme-switching');
+    });
+  }, [theme]);
 
   const currentState =
     trace && trace.steps[currentStep] ? trace.steps[currentStep] : null;
@@ -212,7 +232,7 @@ export default function App() {
               <button
                 key={panel}
                 onClick={() => setActivePanel(panel)}
-                className="px-3 py-1 text-xs font-medium rounded transition-colors"
+                className="px-3 py-1 text-xs font-medium rounded"
                 style={{
                   background:
                     activePanel === panel ? 'var(--color-bg-tertiary)' : 'transparent',
