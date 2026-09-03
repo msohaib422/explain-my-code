@@ -26,7 +26,6 @@ function ExplanationEntry({ entry, isActive, stepNum }) {
         borderRadius: '6px',
         background: isActive ? colors.bg : 'transparent',
         border: isActive ? `1px solid ${colors.border}` : '1px solid transparent',
-        transition: 'all 0.2s ease',
       }}
     >
       <div className="flex items-center gap-2 mb-1.5">

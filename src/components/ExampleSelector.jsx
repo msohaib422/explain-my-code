@@ -10,7 +10,7 @@ export default function ExampleSelector({ examples: exList, onLoad }) {
         <button
           key={i}
           onClick={() => onLoad(ex)}
-          className="px-2 py-0.5 text-[11px] rounded transition-colors hover:brightness-125"
+          className="px-2 py-0.5 text-[11px] rounded hover:brightness-125"
           style={{
             background: 'var(--color-bg-tertiary)',
             color: 'var(--color-text-secondary)',

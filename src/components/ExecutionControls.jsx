@@ -64,7 +64,7 @@ export default function ExecutionControls({
         <div className="flex items-center gap-3 flex-1">
           <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--color-bg-tertiary)' }}>
             <div
-              className="h-full rounded-full transition-all duration-150"
+              className="h-full rounded-full transition-[width] duration-150"
               style={{
                 width: `${progress}%`,
                 background: 'var(--color-accent)',
@@ -101,7 +101,7 @@ function ControlButton({ children, onClick, disabled, primary, title }) {
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className="w-8 h-8 flex items-center justify-center rounded-md transition-all"
+      className="w-8 h-8 flex items-center justify-center rounded-md"
       style={{
         background: primary ? 'var(--color-accent)' : 'transparent',
         color: primary ? '#000' : disabled ? 'var(--color-border)' : 'var(--color-text-secondary)',
