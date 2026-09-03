@@ -7,6 +7,18 @@
     <meta name="description" content="ExplainMyCode — Visual Code Execution Animator. See how JavaScript code runs, step by step." />
     <meta name="theme-color" content="#0d1117" />
     <title>ExplainMyCode — Visual Code Execution Animator</title>
+    <script>
+      (function() {
+        var saved = localStorage.getItem('theme');
+        var theme = saved === 'light' || saved === 'dark' ? saved : 'dark';
+        document.documentElement.setAttribute('data-theme', theme);
+        if (theme === 'dark') {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d1117');
+        } else {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

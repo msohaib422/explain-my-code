@@ -22,7 +22,10 @@ export default function App() {
   const [error, setError] = useState(null);
   const [speed, setSpeed] = useState(500);
   const [activePanel, setActivePanel] = useState('variables');
-  const [theme, setTheme] = useState('light');
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem('theme');
+    return saved === 'light' || saved === 'dark' ? saved : 'dark';
+  });
   const playRef = useRef(null);
 
   const currentState =
@@ -134,6 +137,11 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isPlaying, handlePlay, handlePause, handleNext, handlePrev, handleReset]);
 
+  useEffect(() => {
+    localStorage.setItem('theme', theme);
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
   const handleCodeChange = useCallback((newCode) => {
     setCode(newCode);
     if (trace) {
@@ -163,7 +171,7 @@ export default function App() {
   }, []);
 
   return (
-    <div className="h-full flex flex-col" style={{ background: 'var(--color-bg-primary)' }} data-theme={theme}>
+    <div className="h-full flex flex-col" style={{ background: 'var(--color-bg-primary)' }}>
       <Header onRun={handleRun} theme={theme} onThemeChange={setTheme} code={code} onClear={handleClear} />
 
       <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
