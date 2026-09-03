@@ -20,7 +20,7 @@ export default function Header({ onRun, theme, onThemeChange, code, onClear }) {
             <h1 className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
               ExplainMyCode
             </h1>
-            <p className="text-[10px]" style={{ color: 'var(--color-text-secondary)' }}>
+            <p className="text-[0.625rem]" style={{ color: 'var(--color-text-secondary)' }}>
               Visual Code Execution Animator
             </p>
           </div>
@@ -32,7 +32,7 @@ export default function Header({ onRun, theme, onThemeChange, code, onClear }) {
         <ClearButton onClear={onClear} />
         <button
           onClick={onRun}
-          className="flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-all hover:brightness-110 active:scale-95"
+          className="flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium hover:brightness-110 active:scale-95"
           style={{
             background: 'linear-gradient(135deg, #238636, #2ea043)',
             color: '#fff',

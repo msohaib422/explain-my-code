@@ -22,16 +22,15 @@ function ExplanationEntry({ entry, isActive, stepNum }) {
     <div
       className="animate-fade-in"
       style={{
-        padding: '8px 10px',
-        borderRadius: '6px',
+        padding: '0.5rem 0.625rem',
+        borderRadius: '0.375rem',
         background: isActive ? colors.bg : 'transparent',
         border: isActive ? `1px solid ${colors.border}` : '1px solid transparent',
-        transition: 'all 0.2s ease',
       }}
     >
       <div className="flex items-center gap-2 mb-1.5">
         <span
-          className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+          className="text-[0.625rem] font-bold px-1.5 py-0.5 rounded"
           style={{
             background: isActive ? 'var(--color-accent)' : 'var(--color-bg-tertiary)',
             color: isActive ? '#000' : 'var(--color-text-secondary)',
@@ -41,7 +40,7 @@ function ExplanationEntry({ entry, isActive, stepNum }) {
         </span>
         {colors.label && (
           <span
-            className="text-[9px] px-1 py-0.5 rounded"
+            className="text-[0.5625rem] px-1 py-0.5 rounded"
             style={{
               background: colors.bg,
               color: 'var(--color-text-secondary)',
@@ -53,7 +52,7 @@ function ExplanationEntry({ entry, isActive, stepNum }) {
         )}
         {entry.lineNumber > 0 && (
           <span
-            className="text-[9px] font-mono"
+            className="text-[0.5625rem] font-mono"
             style={{ color: 'var(--color-text-secondary)', opacity: 0.6 }}
           >
             L{entry.lineNumber}
@@ -63,7 +62,7 @@ function ExplanationEntry({ entry, isActive, stepNum }) {
 
       {entry.sourceLine && entry.sourceLine.trim() && (
         <div
-          className="font-mono text-[11px] px-2 py-1 rounded mb-1.5"
+          className="font-mono text-[0.6875rem] px-2 py-1 rounded mb-1.5"
           style={{
             background: 'var(--color-bg-primary)',
             color: 'var(--color-text-primary)',
@@ -118,7 +117,7 @@ export default function ExplanationPanel({ explanations, currentStep }) {
     <div className="flex flex-col h-full">
       <div className="px-3 pt-3 pb-1 shrink-0">
         <h3
-          className="text-[11px] uppercase tracking-wider font-medium"
+          className="text-[0.6875rem] uppercase tracking-wider font-medium"
           style={{ color: 'var(--color-text-secondary)' }}
         >
           Explanation

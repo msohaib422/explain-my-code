@@ -12,7 +12,7 @@ export default function ConsolePanel({ output }) {
   return (
     <div className="p-3 flex flex-col h-full">
       <h3
-        className="text-[11px] uppercase tracking-wider font-medium mb-3 shrink-0"
+        className="text-[0.6875rem] uppercase tracking-wider font-medium mb-3 shrink-0"
         style={{ color: 'var(--color-text-secondary)' }}
       >
         Console Output
@@ -23,7 +23,7 @@ export default function ConsolePanel({ output }) {
         style={{
           background: 'var(--color-bg-primary)',
           border: '1px solid var(--color-border)',
-          minHeight: '120px',
+          minHeight: '7.5rem',
           maxHeight: '100%',
         }}
       >
@@ -42,7 +42,7 @@ export default function ConsolePanel({ output }) {
               }}
             >
               <span
-                className="text-[10px] mt-1 shrink-0 select-none"
+                className="text-[0.625rem] mt-1 shrink-0 select-none"
                 style={{ color: 'var(--color-text-secondary)', opacity: 0.5 }}
               >
                 {i + 1}

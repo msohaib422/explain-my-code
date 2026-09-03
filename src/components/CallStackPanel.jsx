@@ -64,7 +64,7 @@ export default function CallStackPanel({ callStack, callStackHistory }) {
     return (
       <div className="p-3">
         <h3
-          className="text-[11px] uppercase tracking-wider font-medium mb-3"
+          className="text-[0.6875rem] uppercase tracking-wider font-medium mb-3"
           style={{ color: 'var(--color-text-secondary)' }}
         >
           Call Stack
@@ -79,7 +79,7 @@ export default function CallStackPanel({ callStack, callStackHistory }) {
   return (
     <div className="p-3">
       <h3
-        className="text-[11px] uppercase tracking-wider font-medium mb-3"
+        className="text-[0.6875rem] uppercase tracking-wider font-medium mb-3"
         style={{ color: 'var(--color-text-secondary)' }}
       >
         Call Stack
@@ -115,7 +115,7 @@ export default function CallStackPanel({ callStack, callStackHistory }) {
                   <div className="flex items-center gap-2">
                     {isTop && (
                       <span
-                        className="text-[9px] font-bold px-1 py-0.5 rounded"
+                        className="text-[0.5625rem] font-bold px-1 py-0.5 rounded"
                         style={{
                           background: 'var(--color-accent)',
                           color: '#000',
@@ -136,7 +136,7 @@ export default function CallStackPanel({ callStack, callStackHistory }) {
                     </span>
                   </div>
                   <span
-                    className="text-[9px] font-medium px-1.5 py-0.5 rounded shrink-0"
+                    className="text-[0.5625rem] font-medium px-1.5 py-0.5 rounded shrink-0"
                     style={{
                       background: 'rgba(63, 185, 80, 0.15)',
                       color: 'var(--color-success)',
@@ -189,7 +189,7 @@ export default function CallStackPanel({ callStack, callStackHistory }) {
                     {label}
                   </span>
                   <span
-                    className="text-[9px] font-medium px-1.5 py-0.5 rounded shrink-0"
+                    className="text-[0.5625rem] font-medium px-1.5 py-0.5 rounded shrink-0"
                     style={{
                       background: 'rgba(248, 81, 73, 0.15)',
                       color: 'var(--color-error)',

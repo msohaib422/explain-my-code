@@ -22,7 +22,10 @@ export default function App() {
   const [error, setError] = useState(null);
   const [speed, setSpeed] = useState(500);
   const [activePanel, setActivePanel] = useState('variables');
-  const [theme, setTheme] = useState('light');
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem('theme');
+    return saved === 'light' || saved === 'dark' ? saved : 'dark';
+  });
   const playRef = useRef(null);
 
   const currentState =
@@ -134,6 +137,11 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isPlaying, handlePlay, handlePause, handleNext, handlePrev, handleReset]);
 
+  useEffect(() => {
+    localStorage.setItem('theme', theme);
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
   const handleCodeChange = useCallback((newCode) => {
     setCode(newCode);
     if (trace) {
@@ -163,7 +171,7 @@ export default function App() {
   }, []);
 
   return (
-    <div className="h-full flex flex-col" style={{ background: 'var(--color-bg-primary)' }} data-theme={theme}>
+    <div className="h-full flex flex-col" style={{ background: 'var(--color-bg-primary)' }}>
       <Header onRun={handleRun} theme={theme} onThemeChange={setTheme} code={code} onClear={handleClear} />
 
       <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
@@ -212,7 +220,7 @@ export default function App() {
               <button
                 key={panel}
                 onClick={() => setActivePanel(panel)}
-                className="px-3 py-1 text-xs font-medium rounded transition-colors"
+                className="px-3 py-1 text-xs font-medium rounded"
                 style={{
                   background:
                     activePanel === panel ? 'var(--color-bg-tertiary)' : 'transparent',
@@ -231,7 +239,7 @@ export default function App() {
                       : 'Explain'}
                 {panel === 'console' && currentState && currentState.output.length > 0 && (
                   <span
-                    className="ml-1 px-1 text-[10px] rounded"
+                    className="ml-1 px-1 text-[0.625rem] rounded"
                     style={{
                       background: 'var(--color-accent)',
                       color: '#000',
@@ -247,7 +255,7 @@ export default function App() {
             {currentState && (
               <div className="ml-auto flex items-center gap-2">
                 <span
-                  className="text-[10px] font-mono px-1.5 py-0.5 rounded"
+                  className="text-[0.625rem] font-mono px-1.5 py-0.5 rounded"
                   style={{
                     background: 'var(--color-bg-tertiary)',
                     color: 'var(--color-text-secondary)',
@@ -257,7 +265,7 @@ export default function App() {
                 </span>
                 {currentState.status === 'completed' && (
                   <span
-                    className="text-[10px] font-medium px-1.5 py-0.5 rounded"
+                    className="text-[0.625rem] font-medium px-1.5 py-0.5 rounded"
                     style={{
                       background: 'rgba(63, 185, 80, 0.2)',
                       color: 'var(--color-success)',

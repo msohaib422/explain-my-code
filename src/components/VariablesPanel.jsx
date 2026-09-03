@@ -143,7 +143,7 @@ export default function VariablesPanel({ variables, loopInfo, functionCall, info
               Iteration {loopInfo.iteration}
             </span>
             <span
-              className="px-1.5 py-0.5 rounded-full text-[10px] font-medium"
+              className="px-1.5 py-0.5 rounded-full text-[0.625rem] font-medium"
               style={{
                 background: loopInfo.condition
                   ? 'rgba(63, 185, 80, 0.15)'
@@ -193,7 +193,7 @@ export default function VariablesPanel({ variables, loopInfo, functionCall, info
       )}
 
       <h3
-        className="text-[11px] uppercase tracking-wider font-medium mb-2"
+        className="text-[0.6875rem] uppercase tracking-wider font-medium mb-2"
         style={{ color: 'var(--color-text-secondary)' }}
       >
         Variables
@@ -233,7 +233,7 @@ export default function VariablesPanel({ variables, loopInfo, functionCall, info
                   >
                     {name}
                   </span>
-                  <span className="text-[10px] mx-0.5" style={{ color: 'var(--color-text-secondary)', opacity: 0.5 }}>
+                  <span className="text-[0.625rem] mx-0.5" style={{ color: 'var(--color-text-secondary)', opacity: 0.5 }}>
                     =
                   </span>
                   {!isExpandable && (
