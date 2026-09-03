@@ -220,7 +220,7 @@ export default function App() {
               <button
                 key={panel}
                 onClick={() => setActivePanel(panel)}
-                className="px-3 py-1 text-xs font-medium rounded transition-colors"
+                className="px-3 py-1 text-xs font-medium rounded"
                 style={{
                   background:
                     activePanel === panel ? 'var(--color-bg-tertiary)' : 'transparent',
