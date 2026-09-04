@@ -107,3 +107,15 @@ body {
 .animate-pulse-subtle {
   animation: pulse-subtle 1.5s ease-in-out infinite;
 }
+
+@media (min-width: 1024px) {
+  .panel-right {
+    border-left: 1px solid var(--color-border);
+  }
+}
+
+@media (max-width: 640px) {
+  html {
+    font-size: 15px;
+  }
+}

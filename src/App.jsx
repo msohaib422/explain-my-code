@@ -196,7 +196,7 @@ export default function App() {
           style={{ flex: '1 1 50%', minWidth: 0 }}
         >
           <div
-            className="flex items-center gap-2 px-3 py-1.5 overflow-x-auto"
+            className="flex items-center gap-2 px-2 sm:px-3 py-1.5 overflow-x-auto"
             style={{
               borderBottom: '1px solid var(--color-border)',
               background: 'var(--color-bg-secondary)',
@@ -216,17 +216,17 @@ export default function App() {
 
         {/* Right: Visualization Panels */}
         <div
-          className="flex flex-col min-h-0"
+          className="flex flex-col min-h-0 min-w-0 panel-right"
           style={{
             flex: '1 1 50%',
             minWidth: 0,
-            borderLeft: '1px solid var(--color-border)',
           }}
         >
           {/* Panel Tabs */}
           <div
-            className="flex items-center gap-0.5 px-2 py-1"
+            className="flex items-center gap-0.5 px-1.5 sm:px-2 py-1"
             style={{
+              borderTop: '1px solid var(--color-border)',
               borderBottom: '1px solid var(--color-border)',
               background: 'var(--color-bg-secondary)',
             }}
@@ -237,7 +237,7 @@ export default function App() {
                 <button
                   key={panel}
                   onClick={() => setActivePanel(panel)}
-                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-colors"
+                  className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 text-xs font-medium rounded transition-colors"
                   style={{
                     background:
                       activePanel === panel ? 'var(--color-bg-tertiary)' : 'transparent',
@@ -264,7 +264,7 @@ export default function App() {
                     strokeWidth={2}
                     style={{ flexShrink: 0 }}
                   />
-                  <span>{PANEL_LABELS[panel]}</span>
+                  <span className="hidden sm:inline">{PANEL_LABELS[panel]}</span>
                   {panel === 'console' && currentState && currentState.output.length > 0 && (
                     <span
                       className="ml-0.5 px-1 text-[0.625rem] rounded"
@@ -282,9 +282,9 @@ export default function App() {
 
             {/* Step info */}
             {currentState && (
-              <div className="ml-auto flex items-center gap-2">
+              <div className="ml-auto flex items-center gap-2 shrink-0">
                 <span
-                  className="text-[0.625rem] font-mono px-1.5 py-0.5 rounded"
+                  className="hidden sm:inline text-[0.625rem] font-mono px-1.5 py-0.5 rounded"
                   style={{
                     background: 'var(--color-bg-tertiary)',
                     color: 'var(--color-text-secondary)',
