@@ -1,84 +1,168 @@
 import { useEffect, useRef, useMemo } from 'react';
 
 const TYPE_COLORS = {
-  variable: { bg: 'rgba(63, 185, 80, 0.1)', border: 'rgba(63, 185, 80, 0.3)', label: 'Variable' },
-  assignment: { bg: 'rgba(88, 166, 255, 0.1)', border: 'rgba(88, 166, 255, 0.3)', label: 'Assignment' },
-  condition: { bg: 'rgba(210, 153, 34, 0.1)', border: 'rgba(210, 153, 34, 0.3)', label: 'Condition' },
-  loop: { bg: 'rgba(210, 153, 34, 0.1)', border: 'rgba(210, 153, 34, 0.3)', label: 'Loop' },
-  'function-decl': { bg: 'rgba(163, 113, 247, 0.1)', border: 'rgba(163, 113, 247, 0.3)', label: 'Function' },
-  'function-call': { bg: 'rgba(163, 113, 247, 0.1)', border: 'rgba(163, 113, 247, 0.3)', label: 'Call' },
-  return: { bg: 'rgba(248, 133, 73, 0.1)', border: 'rgba(248, 133, 73, 0.3)', label: 'Return' },
-  console: { bg: 'rgba(136, 136, 136, 0.1)', border: 'rgba(136, 136, 136, 0.3)', label: 'Console' },
-  class: { bg: 'rgba(163, 113, 247, 0.1)', border: 'rgba(163, 113, 247, 0.3)', label: 'Class' },
-  completed: { bg: 'rgba(63, 185, 80, 0.15)', border: 'rgba(63, 185, 80, 0.4)', label: 'Done' },
-  statement: { bg: 'var(--color-bg-tertiary)', border: 'var(--color-border)', label: '' },
+  variable: { bg: 'rgba(63, 185, 80, 0.1)', border: 'rgba(63, 185, 80, 0.3)', dot: '#3fb950', label: 'Variable' },
+  assignment: { bg: 'rgba(88, 166, 255, 0.1)', border: 'rgba(88, 166, 255, 0.3)', dot: '#58a6ff', label: 'Assignment' },
+  condition: { bg: 'rgba(210, 153, 34, 0.1)', border: 'rgba(210, 153, 34, 0.3)', dot: '#d29922', label: 'Condition' },
+  loop: { bg: 'rgba(210, 153, 34, 0.1)', border: 'rgba(210, 153, 34, 0.3)', dot: '#d29922', label: 'Loop' },
+  'function-decl': { bg: 'rgba(163, 113, 247, 0.1)', border: 'rgba(163, 113, 247, 0.3)', dot: '#a371f7', label: 'Function' },
+  'function-call': { bg: 'rgba(163, 113, 247, 0.1)', border: 'rgba(163, 113, 247, 0.3)', dot: '#a371f7', label: 'Call' },
+  return: { bg: 'rgba(248, 133, 73, 0.1)', border: 'rgba(248, 133, 73, 0.3)', dot: '#f88549', label: 'Return' },
+  console: { bg: 'rgba(136, 136, 136, 0.1)', border: 'rgba(136, 136, 136, 0.3)', dot: '#8b949e', label: 'Console' },
+  class: { bg: 'rgba(163, 113, 247, 0.1)', border: 'rgba(163, 113, 247, 0.3)', dot: '#a371f7', label: 'Class' },
+  completed: { bg: 'rgba(63, 185, 80, 0.15)', border: 'rgba(63, 185, 80, 0.4)', dot: '#3fb950', label: 'Done' },
+  statement: { bg: 'var(--color-bg-tertiary)', border: 'var(--color-border)', dot: 'var(--color-text-secondary)', label: '' },
 };
 
-function ExplanationEntry({ entry, isActive, stepNum }) {
+function ExplanationEntry({ entry, isActive, stepNum, isLast }) {
   if (!entry) return null;
   const colors = TYPE_COLORS[entry.type] || TYPE_COLORS.statement;
 
   return (
-    <div
-      className="animate-fade-in"
-      style={{
-        padding: '0.5rem 0.625rem',
-        borderRadius: '0.375rem',
-        background: isActive ? colors.bg : 'transparent',
-        border: isActive ? `1px solid ${colors.border}` : '1px solid transparent',
-      }}
-    >
-      <div className="flex items-center gap-2 mb-1.5">
-        <span
-          className="text-[0.625rem] font-bold px-1.5 py-0.5 rounded"
+    <div className="animate-fade-in" style={{ display: 'flex', position: 'relative' }}>
+      {/* Timeline column */}
+      <div
+        style={{
+          width: '28px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          flexShrink: 0,
+          position: 'relative',
+        }}
+      >
+        {/* Dot / commit node */}
+        <div
           style={{
-            background: isActive ? 'var(--color-accent)' : 'var(--color-bg-tertiary)',
-            color: isActive ? '#000' : 'var(--color-text-secondary)',
+            width: isActive ? '12px' : '10px',
+            height: isActive ? '12px' : '10px',
+            borderRadius: '50%',
+            background: isActive ? colors.dot : 'var(--color-bg-primary)',
+            border: isActive
+              ? `2px solid ${colors.dot}`
+              : `2px solid ${colors.border || 'var(--color-border)'}`,
+            flexShrink: 0,
+            marginTop: '4px',
+            zIndex: 1,
+            boxShadow: isActive ? `0 0 0 3px ${colors.bg}` : 'none',
+            transition: 'all 0.2s ease',
           }}
-        >
-          Step {stepNum + 1}
-        </span>
-        {colors.label && (
-          <span
-            className="text-[0.5625rem] px-1 py-0.5 rounded"
+        />
+        {/* Vertical connecting line */}
+        {!isLast && (
+          <div
             style={{
-              background: colors.bg,
-              color: 'var(--color-text-secondary)',
-              border: `1px solid ${colors.border}`,
+              width: '2px',
+              flex: 1,
+              minHeight: '8px',
+              background: 'var(--color-border)',
+              opacity: 0.5,
             }}
-          >
-            {colors.label}
-          </span>
-        )}
-        {entry.lineNumber > 0 && (
-          <span
-            className="text-[0.5625rem] font-mono"
-            style={{ color: 'var(--color-text-secondary)', opacity: 0.6 }}
-          >
-            L{entry.lineNumber}
-          </span>
+          />
         )}
       </div>
 
-      {entry.sourceLine && entry.sourceLine.trim() && (
+      {/* Jiggly arrow connector */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          paddingTop: '5px',
+          width: '14px',
+          flexShrink: 0,
+        }}
+      >
         <div
-          className="font-mono text-[0.6875rem] px-2 py-1 rounded mb-1.5"
+          className={isActive ? 'animate-jiggle-arrow' : ''}
           style={{
-            background: 'var(--color-bg-primary)',
-            color: 'var(--color-text-primary)',
-            borderLeft: `2px solid ${colors.border}`,
+            height: '2px',
+            width: '14px',
+            background: colors.dot,
+            borderRadius: '1px',
+            position: 'relative',
+            opacity: isActive ? undefined : 0,
           }}
         >
-          {entry.sourceLine.trim()}
+          {/* Arrow head */}
+          <div
+            style={{
+              position: 'absolute',
+              right: '-1px',
+              top: '-3px',
+              width: 0,
+              height: 0,
+              borderTop: '4px solid transparent',
+              borderBottom: '4px solid transparent',
+              borderLeft: `6px solid ${colors.dot}`,
+            }}
+          />
         </div>
-      )}
+      </div>
 
-      <p
-        className="text-xs leading-relaxed"
-        style={{ color: 'var(--color-text-primary)' }}
+      {/* Content column */}
+      <div
+        style={{
+          flex: 1,
+          padding: '0 0.5rem 1rem 0.375rem',
+          minWidth: 0,
+        }}
       >
-        {entry.explanation}
-      </p>
+        {/* Header row: Step badge + Type label + Line number */}
+        <div className="flex items-center gap-1.5 mb-1">
+          <span
+            className="text-[0.625rem] font-bold px-1.5 py-0.5 rounded"
+            style={{
+              background: isActive ? colors.dot : 'var(--color-bg-tertiary)',
+              color: isActive ? '#000' : 'var(--color-text-secondary)',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            Step {stepNum + 1}
+          </span>
+          {colors.label && (
+            <span
+              className="text-[0.5625rem] px-1 py-0.5 rounded"
+              style={{
+                background: colors.bg,
+                color: 'var(--color-text-secondary)',
+                border: `1px solid ${colors.border}`,
+              }}
+            >
+              {colors.label}
+            </span>
+          )}
+          {entry.lineNumber > 0 && (
+            <span
+              className="text-[0.5625rem] font-mono"
+              style={{ color: 'var(--color-text-secondary)', opacity: 0.6 }}
+            >
+              L{entry.lineNumber}
+            </span>
+          )}
+        </div>
+
+        {/* Source code line */}
+        {entry.sourceLine && entry.sourceLine.trim() && (
+          <div
+            className="font-mono text-[0.6875rem] px-2 py-1 rounded mb-1"
+            style={{
+              background: 'var(--color-bg-primary)',
+              color: 'var(--color-text-primary)',
+              borderLeft: `2px solid ${colors.border}`,
+            }}
+          >
+            {entry.sourceLine.trim()}
+          </div>
+        )}
+
+        {/* Explanation text */}
+        <p
+          className="text-xs leading-relaxed"
+          style={{ color: 'var(--color-text-primary)' }}
+        >
+          {entry.explanation}
+        </p>
+      </div>
     </div>
   );
 }
@@ -139,7 +223,7 @@ export default function ExplanationPanel({ explanations, currentStep }) {
             </p>
           </div>
         ) : (
-          <div className="space-y-1">
+          <div>
             {visibleEntries.map((entry, i) => (
               <div
                 key={i}
@@ -149,6 +233,7 @@ export default function ExplanationPanel({ explanations, currentStep }) {
                   entry={entry}
                   isActive={entry.originalIndex === currentStep}
                   stepNum={entry.originalIndex}
+                  isLast={i === visibleEntries.length - 1}
                 />
               </div>
             ))}
