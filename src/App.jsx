@@ -264,7 +264,7 @@ export default function App() {
                     strokeWidth={2}
                     style={{ flexShrink: 0 }}
                   />
-                  <span className="hidden sm:inline">{PANEL_LABELS[panel]}</span>
+                  <span>{PANEL_LABELS[panel]}</span>
                   {panel === 'console' && currentState && currentState.output.length > 0 && (
                     <span
                       className="ml-0.5 px-1 text-[0.625rem] rounded"
