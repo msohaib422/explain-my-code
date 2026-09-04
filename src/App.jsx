@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { Box, Terminal, Layers, Lightbulb } from 'lucide-react';
 import { examples } from './examples';
 import { generateTrace } from './engine/interpreter';
 import { generateAllExplanations } from './engine/explainer';
@@ -11,6 +12,20 @@ import ExplanationPanel from './components/ExplanationPanel';
 import ErrorPanel from './components/ErrorPanel';
 import ExampleSelector from './components/ExampleSelector';
 import Header from './components/Header';
+
+const PANEL_ICONS = {
+  variables: Box,
+  callstack: Layers,
+  console: Terminal,
+  explanation: Lightbulb,
+};
+
+const PANEL_LABELS = {
+  variables: 'Variables',
+  callstack: 'Call Stack',
+  console: 'Console',
+  explanation: 'Explain',
+};
 
 const DEFAULT_CODE = examples[0].code;
 
@@ -216,40 +231,54 @@ export default function App() {
               background: 'var(--color-bg-secondary)',
             }}
           >
-            {['variables', 'callstack', 'console', 'explanation'].map((panel) => (
-              <button
-                key={panel}
-                onClick={() => setActivePanel(panel)}
-                className="px-3 py-1 text-xs font-medium rounded"
-                style={{
-                  background:
-                    activePanel === panel ? 'var(--color-bg-tertiary)' : 'transparent',
-                  color:
-                    activePanel === panel
-                      ? 'var(--color-text-primary)'
-                      : 'var(--color-text-secondary)',
-                }}
-              >
-                {panel === 'variables'
-                  ? 'Variables'
-                  : panel === 'callstack'
-                    ? 'Call Stack'
-                    : panel === 'console'
-                      ? 'Console'
-                      : 'Explain'}
-                {panel === 'console' && currentState && currentState.output.length > 0 && (
-                  <span
-                    className="ml-1 px-1 text-[0.625rem] rounded"
-                    style={{
-                      background: 'var(--color-accent)',
-                      color: '#000',
-                    }}
-                  >
-                    {currentState.output.length}
-                  </span>
-                )}
-              </button>
-            ))}
+            {['variables', 'callstack', 'console', 'explanation'].map((panel) => {
+              const Icon = PANEL_ICONS[panel];
+              return (
+                <button
+                  key={panel}
+                  onClick={() => setActivePanel(panel)}
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-colors"
+                  style={{
+                    background:
+                      activePanel === panel ? 'var(--color-bg-tertiary)' : 'transparent',
+                    color:
+                      activePanel === panel
+                        ? 'var(--color-text-primary)'
+                        : 'var(--color-text-secondary)',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (activePanel !== panel) {
+                      e.currentTarget.style.background = 'var(--color-bg-tertiary)';
+                      e.currentTarget.style.color = 'var(--color-text-primary)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (activePanel !== panel) {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = 'var(--color-text-secondary)';
+                    }
+                  }}
+                >
+                  <Icon
+                    size={17}
+                    strokeWidth={2}
+                    style={{ flexShrink: 0 }}
+                  />
+                  <span>{PANEL_LABELS[panel]}</span>
+                  {panel === 'console' && currentState && currentState.output.length > 0 && (
+                    <span
+                      className="ml-0.5 px-1 text-[0.625rem] rounded"
+                      style={{
+                        background: 'var(--color-accent)',
+                        color: '#000',
+                      }}
+                    >
+                      {currentState.output.length}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
 
             {/* Step info */}
             {currentState && (
