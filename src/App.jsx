@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { Braces, Terminal, Layers, Lightbulb } from 'lucide-react';
+import { Box, Terminal, Layers, Lightbulb } from 'lucide-react';
 import { examples } from './examples';
 import { generateTrace } from './engine/interpreter';
 import { generateAllExplanations } from './engine/explainer';
@@ -14,7 +14,7 @@ import ExampleSelector from './components/ExampleSelector';
 import Header from './components/Header';
 
 const PANEL_ICONS = {
-  variables: Braces,
+  variables: Box,
   callstack: Layers,
   console: Terminal,
   explanation: Lightbulb,
