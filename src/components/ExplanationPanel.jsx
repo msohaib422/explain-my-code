@@ -62,43 +62,6 @@ function ExplanationEntry({ entry, isActive, stepNum, isLast }) {
         )}
       </div>
 
-      {/* Jiggly arrow connector */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          paddingTop: '5px',
-          width: '14px',
-          flexShrink: 0,
-        }}
-      >
-        <div
-          className={isActive ? 'animate-jiggle-arrow' : ''}
-          style={{
-            height: '2px',
-            width: '14px',
-            background: colors.dot,
-            borderRadius: '1px',
-            position: 'relative',
-            opacity: isActive ? undefined : 0,
-          }}
-        >
-          {/* Arrow head */}
-          <div
-            style={{
-              position: 'absolute',
-              right: '-1px',
-              top: '-3px',
-              width: 0,
-              height: 0,
-              borderTop: '4px solid transparent',
-              borderBottom: '4px solid transparent',
-              borderLeft: `6px solid ${colors.dot}`,
-            }}
-          />
-        </div>
-      </div>
-
       {/* Content column */}
       <div
         style={{
