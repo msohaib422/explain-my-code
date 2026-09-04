@@ -2,7 +2,7 @@ export default function ThemeToggle({ theme, onToggle }) {
   return (
     <button
       onClick={onToggle}
-      className="w-10 h-10 flex items-center justify-center rounded-md"
+      className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-md"
       title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
       style={{
         color: 'var(--color-text-secondary)',

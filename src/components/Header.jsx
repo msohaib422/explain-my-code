@@ -5,7 +5,7 @@ import ClearButton from './ClearButton';
 export default function Header({ onRun, theme, onThemeChange, code, onClear }) {
   return (
     <header
-      className="flex items-center justify-between px-4 py-3 shrink-0"
+      className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-3 shrink-0 flex-wrap gap-2"
       style={{ background: 'var(--color-bg-secondary)', borderBottom: '1px solid var(--color-border)' }}
     >
       <div className="flex items-center gap-3">
@@ -26,7 +26,7 @@ export default function Header({ onRun, theme, onThemeChange, code, onClear }) {
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-0.5 shrink-0 ml-4">
+      <div className="flex items-center gap-0.5 sm:shrink-0 ml-auto sm:ml-4 min-w-0">
         <ThemeToggle theme={theme} onToggle={() => onThemeChange(theme === 'dark' ? 'light' : 'dark')} />
         <SaveCodeButton code={code} />
         <ClearButton onClear={onClear} />

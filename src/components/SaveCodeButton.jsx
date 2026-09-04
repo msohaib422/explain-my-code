@@ -53,7 +53,7 @@ export default function SaveCodeButton({ code }) {
     <button
       onClick={handleSave}
       disabled={saving}
-      className="w-10 h-10 flex items-center justify-center rounded-md"
+      className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-md"
       title={saving ? 'Saving...' : status === 'saved' ? 'Saved!' : status === 'downloaded' ? 'Downloaded!' : 'Save code as .js file'}
       style={{
         color: 'var(--color-text-secondary)',

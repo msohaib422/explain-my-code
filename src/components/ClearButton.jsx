@@ -2,7 +2,7 @@ export default function ClearButton({ onClear }) {
   return (
     <button
       onClick={onClear}
-      className="w-10 h-10 flex items-center justify-center rounded-md"
+      className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-md"
       title="Clear code"
       style={{
         color: 'var(--color-text-secondary)',
