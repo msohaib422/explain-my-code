@@ -72,6 +72,14 @@ body {
   box-sizing: border-box;
 }
 
+.no-transition,
+.no-transition *,
+.no-transition *::before,
+.no-transition *::after {
+  transition: none !important;
+  animation-duration: 0s !important;
+}
+
 ::-webkit-scrollbar {
   width: 0.375rem;
   height: 0.375rem;

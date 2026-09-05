@@ -154,7 +154,13 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem('theme', theme);
+    document.documentElement.classList.add('no-transition');
     document.documentElement.setAttribute('data-theme', theme);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.documentElement.classList.remove('no-transition');
+      });
+    });
   }, [theme]);
 
   const handleCodeChange = useCallback((newCode) => {
