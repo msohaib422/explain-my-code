@@ -230,61 +230,63 @@ export default function App() {
         >
           {/* Panel Tabs */}
           <div
-            className="flex items-center gap-0.5 px-1.5 sm:px-2 py-1"
+            className="flex items-center gap-0.5 px-1.5 sm:px-2 py-1 overflow-hidden"
             style={{
               borderTop: '1px solid var(--color-border)',
               borderBottom: '1px solid var(--color-border)',
               background: 'var(--color-bg-secondary)',
             }}
           >
-            {['variables', 'callstack', 'console', 'explanation'].map((panel) => {
-              const Icon = PANEL_ICONS[panel];
-              return (
-                <button
-                  key={panel}
-                  onClick={() => setActivePanel(panel)}
-                  className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 text-xs font-medium rounded transition-colors"
-                  style={{
-                    background:
-                      activePanel === panel ? 'var(--color-bg-tertiary)' : 'transparent',
-                    color:
-                      activePanel === panel
-                        ? 'var(--color-text-primary)'
-                        : 'var(--color-text-secondary)',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (activePanel !== panel) {
-                      e.currentTarget.style.background = 'var(--color-bg-tertiary)';
-                      e.currentTarget.style.color = 'var(--color-text-primary)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (activePanel !== panel) {
-                      e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.color = 'var(--color-text-secondary)';
-                    }
-                  }}
-                >
-                  <Icon
-                    size={17}
-                    strokeWidth={2}
-                    style={{ flexShrink: 0 }}
-                  />
-                  <span>{PANEL_LABELS[panel]}</span>
-                  {panel === 'console' && currentState && currentState.output.length > 0 && (
-                    <span
-                      className="ml-0.5 px-1 text-[0.625rem] rounded"
-                      style={{
-                        background: 'var(--color-accent)',
-                        color: '#000',
-                      }}
-                    >
-                      {currentState.output.length}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+            <div className="flex items-center gap-0.5 min-w-0 overflow-hidden">
+              {['variables', 'callstack', 'console', 'explanation'].map((panel) => {
+                const Icon = PANEL_ICONS[panel];
+                return (
+                  <button
+                    key={panel}
+                    onClick={() => setActivePanel(panel)}
+                    className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 text-xs font-medium rounded transition-colors shrink-0"
+                    style={{
+                      background:
+                        activePanel === panel ? 'var(--color-bg-tertiary)' : 'transparent',
+                      color:
+                        activePanel === panel
+                          ? 'var(--color-text-primary)'
+                          : 'var(--color-text-secondary)',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (activePanel !== panel) {
+                        e.currentTarget.style.background = 'var(--color-bg-tertiary)';
+                        e.currentTarget.style.color = 'var(--color-text-primary)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (activePanel !== panel) {
+                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.color = 'var(--color-text-secondary)';
+                      }
+                    }}
+                  >
+                    <Icon
+                      size={17}
+                      strokeWidth={2}
+                      style={{ flexShrink: 0 }}
+                    />
+                    <span className="hidden sm:inline">{PANEL_LABELS[panel]}</span>
+                    {panel === 'console' && currentState && currentState.output.length > 0 && (
+                      <span
+                        className="ml-0.5 px-1 text-[0.625rem] rounded"
+                        style={{
+                          background: 'var(--color-accent)',
+                          color: '#000',
+                        }}
+                      >
+                        {currentState.output.length}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
 
             {/* Step info */}
             {currentState && (
@@ -300,7 +302,7 @@ export default function App() {
                 </span>
                 {currentState.status === 'completed' && (
                   <span
-                    className="text-[0.625rem] font-medium px-1.5 py-0.5 rounded"
+                    className="text-[0.625rem] font-medium px-1.5 py-0.5 rounded whitespace-nowrap"
                     style={{
                       background: 'rgba(63, 185, 80, 0.2)',
                       color: 'var(--color-success)',
