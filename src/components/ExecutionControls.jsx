@@ -23,7 +23,7 @@ export default function ExecutionControls({
 
   return (
     <div
-      className="shrink-0 px-4 py-2 flex items-center gap-3"
+      className="shrink-0 px-3 sm:px-4 py-2 flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap"
       style={{ background: 'var(--color-bg-secondary)', borderTop: '1px solid var(--color-border)' }}
     >
       <div className="flex items-center gap-1">
@@ -61,7 +61,7 @@ export default function ExecutionControls({
       </div>
 
       {hasTrace && (
-        <div className="flex items-center gap-3 flex-1">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
           <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--color-bg-tertiary)' }}>
             <div
               className="h-full rounded-full transition-[width] duration-150"
@@ -71,7 +71,7 @@ export default function ExecutionControls({
               }}
             />
           </div>
-          <span className="text-xs whitespace-nowrap tabular-nums" style={{ color: 'var(--color-text-secondary)' }}>
+          <span className="hidden sm:inline text-xs whitespace-nowrap tabular-nums" style={{ color: 'var(--color-text-secondary)' }}>
             {totalSteps > 0 ? `${currentStep + 1} / ${totalSteps}` : '0 / 0'}
           </span>
         </div>
